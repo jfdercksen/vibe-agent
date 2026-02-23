@@ -24,6 +24,31 @@ export type Priority = 'high' | 'medium' | 'low'
 export type AssetType = 'image' | 'video' | 'voice_note' | 'document' | 'logo' | 'font' | 'graphic'
 export type AssetSource = 'upload' | 'ai_generated' | 'screenshot' | 'scraped'
 
+export interface IntegrationConfig {
+  wordpress?: {
+    url: string
+    username: string
+    app_password: string
+  }
+  mailchimp?: {
+    api_key: string
+    server_prefix: string
+    list_id?: string
+  }
+  meta?: {
+    access_token: string
+    facebook_page_id?: string
+    instagram_account_id?: string
+  }
+  linkedin?: {
+    org_id: string
+  }
+  n8n?: {
+    base_url: string
+    webhook_secret?: string
+  }
+}
+
 export interface Client {
   id: string
   name: string
@@ -40,6 +65,7 @@ export interface Client {
     logo_url?: string
     fonts?: string[]
   }
+  integrations: IntegrationConfig
   is_active: boolean
   created_at: string
   updated_at: string
@@ -171,6 +197,7 @@ export interface Email {
   cta_url: string | null
   send_day: number | null
   mailchimp_campaign_id: string | null
+  image_url: string | null
   status: EmailStatus
   created_at: string
 }
@@ -251,6 +278,7 @@ export interface CreativeBrief {
   }>
   selected_concept: number | null
   production_specs: unknown[]
+  image_url: string | null
   status: BriefStatus
   created_at: string
   updated_at: string

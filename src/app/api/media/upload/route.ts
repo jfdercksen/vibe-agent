@@ -24,6 +24,8 @@ export async function POST(req: NextRequest) {
     const isLogo = formData.get('isLogo') === 'true'
     const altText = formData.get('altText') as string | null
     const tags = formData.get('tags') as string | null
+    const referenceTable = formData.get('referenceTable') as string | null
+    const referenceId = formData.get('referenceId') as string | null
 
     if (!file || !clientId) {
       return NextResponse.json({ error: 'Missing file or clientId' }, { status: 400 })
@@ -85,6 +87,8 @@ export async function POST(req: NextRequest) {
         alt_text: altText || null,
         tags: tags ? tags.split(',').map((t) => t.trim()).filter(Boolean) : [],
         source: 'upload',
+        reference_table: referenceTable || null,
+        reference_id: referenceId || null,
       })
       .select()
       .single()

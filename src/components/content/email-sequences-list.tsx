@@ -38,6 +38,7 @@ import {
   Save,
   Clock,
   Eye,
+  ImageIcon,
 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { toast } from 'sonner'
@@ -242,11 +243,15 @@ function EmailRow({
   localOverride,
   onEdit,
   onStatusChange,
+  clientId,
+  onImageSaved,
 }: {
   email: Email
   localOverride?: Partial<Email>
   onEdit: (e: Email) => void
   onStatusChange: (id: string, status: string) => void
+  clientId: string
+  onImageSaved: (emailId: string, imageUrl: string) => void
 }) {
   const merged  = localOverride ? { ...email, ...localOverride } : email
   const [expanded, setExpanded] = useState(false)
@@ -322,6 +327,32 @@ function EmailRow({
             <p className="text-sm text-muted-foreground pt-3 italic">No body text yet — click Edit to add one.</p>
           )}
 
+          {/* Image */}
+          <div className="flex items-center gap-3 pt-1">
+            {merged.image_url && (
+              <a href={merged.image_url} target="_blank" rel="noopener noreferrer" className="shrink-0">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={merged.image_url}
+                  alt="Email image"
+                  className="h-16 w-24 rounded border object-cover hover:opacity-80 transition-opacity"
+                  loading="lazy"
+                />
+              </a>
+            )}
+            <ImageGeneratorTrigger
+              clientId={clientId}
+              referenceTable="emails"
+              referenceId={email.id}
+              defaultUseCase="general"
+              label={merged.image_url ? 'Change Image' : 'Add Image'}
+              onImageSaved={(asset) => {
+                const url = 'file_url' in asset ? asset.file_url : ''
+                if (url) onImageSaved(email.id, url)
+              }}
+            />
+          </div>
+
           {(merged.cta_text || merged.cta_url) && (
             <div className="flex items-center gap-3 flex-wrap">
               {merged.cta_text && (
@@ -362,7 +393,7 @@ function EmailRow({
 
 // ─── Sequence Card ─────────────────────────────────────────────────────────
 
-function SequenceCard({ sequence }: { sequence: EmailSequenceWithEmails }) {
+function SequenceCard({ sequence, clientId }: { sequence: EmailSequenceWithEmails; clientId: string }) {
   const [open, setOpen]         = useState(false)
   const [editEmail, setEditEmail] = useState<Email | null>(null)
   const [localEmailUpdates, setLocalEmailUpdates] = useState<Record<string, Partial<Email>>>({})
@@ -370,6 +401,15 @@ function SequenceCard({ sequence }: { sequence: EmailSequenceWithEmails }) {
 
   const applyEmailUpdate = (id: string, fields: Partial<Email>) =>
     setLocalEmailUpdates((prev) => ({ ...prev, [id]: { ...(prev[id] || {}), ...fields } }))
+
+  const handleEmailImageSaved = async (emailId: string, imageUrl: string) => {
+    applyEmailUpdate(emailId, { image_url: imageUrl })
+    await fetch('/api/content/update', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ table: 'emails', id: emailId, fields: { image_url: imageUrl } }),
+    })
+  }
 
   const approvedCount = sequence.emails.filter((e) => {
     const s = localEmailUpdates[e.id]?.status ?? e.status
@@ -450,6 +490,8 @@ function SequenceCard({ sequence }: { sequence: EmailSequenceWithEmails }) {
                   localOverride={localEmailUpdates[email.id]}
                   onEdit={setEditEmail}
                   onStatusChange={(id, s) => applyEmailUpdate(id, { status: s as Email['status'] })}
+                  clientId={clientId}
+                  onImageSaved={handleEmailImageSaved}
                 />
               ))
             )}
@@ -499,7 +541,7 @@ export function EmailSequencesList({ sequences, clientId }: EmailSequencesListPr
         />
       </div>
       {sequences.map((seq) => (
-        <SequenceCard key={seq.id} sequence={seq} />
+        <SequenceCard key={seq.id} sequence={seq} clientId={clientId} />
       ))}
     </div>
   )

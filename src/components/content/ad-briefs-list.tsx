@@ -155,7 +155,7 @@ function AdBriefViewModal({
 }) {
   const [copied, setCopied] = useState(false)
   const [showImageGen, setShowImageGen] = useState(false)
-  const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null)
+  const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(brief?.image_url || null)
   if (!brief) return null
 
   const handleCopy = () => {
@@ -363,11 +363,17 @@ function AdBriefViewModal({
                   referenceTable="creative_briefs"
                   referenceId={brief.id}
                   compact
-                  onImageSaved={(asset) => {
+                  onImageSaved={async (asset) => {
                     const url = 'file_url' in asset ? asset.file_url : ''
                     if (url) {
                       setGeneratedImageUrl(url)
                       setShowImageGen(false)
+                      // Persist to DB
+                      await fetch('/api/content/update', {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ table: 'creative_briefs', id: brief.id, fields: { image_url: url } }),
+                      })
                     }
                   }}
                 />

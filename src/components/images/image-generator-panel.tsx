@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
+import { useDropzone } from 'react-dropzone'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -9,14 +10,14 @@ import { Label } from '@/components/ui/label'
 import {
   Wand2, Search, X, Check, Download, Copy, Loader2, ChevronDown,
   Image as ImageIcon, Sparkles, Camera, AlertCircle, ExternalLink,
-  Import,
+  Import, Upload, FolderOpen,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import type { MediaAsset } from '@/lib/types/database'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
-type Tab = 'generate' | 'edit' | 'unsplash'
+type Tab = 'generate' | 'upload' | 'edit' | 'unsplash' | 'library'
 type UseCase = 'product_photo' | 'social_graphic' | 'logo' | 'blog_header' | 'ad_creative' | 'general'
 
 interface GeneratedImage {
@@ -193,6 +194,82 @@ export function ImageGeneratorPanel({
   const [importingId, setImportingId] = useState<string | null>(null)
   const [copiedUrl, setCopiedUrl]     = useState<string | null>(null)
 
+  // Upload state
+  const [uploading, setUploading]     = useState(false)
+  const [uploadPreview, setUploadPreview] = useState<string | null>(null)
+
+  // Library state
+  const [libraryAssets, setLibraryAssets] = useState<MediaAsset[]>([])
+  const [libraryLoaded, setLibraryLoaded] = useState(false)
+  const [libraryLoading, setLibraryLoading] = useState(false)
+  const [librarySearch, setLibrarySearch] = useState('')
+
+  // ── File Upload ──────────────────────────────────────────────────────────────
+  const handleFileUpload = useCallback(async (files: File[]) => {
+    const file = files[0]
+    if (!file) return
+
+    // Preview
+    if (file.type.startsWith('image/')) {
+      setUploadPreview(URL.createObjectURL(file))
+    }
+
+    setUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('clientId', clientId)
+      if (referenceTable) formData.append('referenceTable', referenceTable)
+      if (referenceId) formData.append('referenceId', referenceId)
+
+      const res = await fetch('/api/media/upload', { method: 'POST', body: formData })
+      const data = await res.json()
+
+      if (!res.ok) throw new Error(data.error || 'Upload failed')
+
+      onImageSaved?.(data.asset)
+      toast.success('Image uploaded and attached!')
+      setUploadPreview(null)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Upload failed'
+      toast.error(msg)
+    } finally {
+      setUploading(false)
+    }
+  }, [clientId, referenceTable, referenceId, onImageSaved])
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop: handleFileUpload,
+    accept: { 'image/*': ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'] },
+    maxFiles: 1,
+    disabled: uploading,
+  })
+
+  // ── Library Fetch ─────────────────────────────────────────────────────────────
+  const fetchLibrary = useCallback(async (search?: string) => {
+    setLibraryLoading(true)
+    try {
+      const params = new URLSearchParams({ clientId, type: 'image' })
+      if (search) params.set('search', search)
+      const res = await fetch(`/api/media?${params}`)
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to load library')
+      setLibraryAssets(data.assets || [])
+      setLibraryLoaded(true)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to load library')
+    } finally {
+      setLibraryLoading(false)
+    }
+  }, [clientId])
+
+  // Load library when tab is first selected
+  useEffect(() => {
+    if (tab === 'library' && !libraryLoaded) {
+      fetchLibrary()
+    }
+  }, [tab, libraryLoaded, fetchLibrary])
+
   // ── AI Generation ────────────────────────────────────────────────────────────
   const handleGenerate = useCallback(async () => {
     if (!prompt.trim()) { toast.error('Enter a prompt first'); return }
@@ -341,36 +418,25 @@ export function ImageGeneratorPanel({
     <div className={cn('rounded-lg border bg-card', compact ? 'p-4' : 'p-5')}>
       {/* Tabs */}
       <div className="flex items-center gap-1 mb-4 p-1 rounded-lg bg-muted w-fit">
-        <button
-          onClick={() => setTab('generate')}
-          className={cn(
-            'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
-            tab === 'generate' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
-          )}
-        >
-          <Wand2 className="h-3.5 w-3.5" />
-          Generate
-        </button>
-        <button
-          onClick={() => setTab('edit')}
-          className={cn(
-            'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
-            tab === 'edit' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
-          )}
-        >
-          <Sparkles className="h-3.5 w-3.5" />
-          Edit Image
-        </button>
-        <button
-          onClick={() => setTab('unsplash')}
-          className={cn(
-            'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
-            tab === 'unsplash' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
-          )}
-        >
-          <Camera className="h-3.5 w-3.5" />
-          Unsplash
-        </button>
+        {[
+          { id: 'generate' as Tab, icon: Wand2, label: 'Generate' },
+          { id: 'upload' as Tab, icon: Upload, label: 'Upload' },
+          { id: 'edit' as Tab, icon: Sparkles, label: 'Edit' },
+          { id: 'unsplash' as Tab, icon: Camera, label: 'Unsplash' },
+          { id: 'library' as Tab, icon: FolderOpen, label: 'Library' },
+        ].map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            className={cn(
+              'flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors',
+              tab === t.id ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <t.icon className="h-3.5 w-3.5" />
+            {t.label}
+          </button>
+        ))}
       </div>
 
       {/* ── AI Generate Tab ── */}
@@ -927,6 +993,126 @@ export function ImageGeneratorPanel({
               <p className="text-xs text-muted-foreground mt-1">
                 Access millions of high-quality photos from Unsplash photographers
               </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Upload Tab ── */}
+      {tab === 'upload' && (
+        <div className="space-y-4">
+          <div
+            {...getRootProps()}
+            className={cn(
+              'rounded-lg border-2 border-dashed p-8 text-center cursor-pointer transition-colors',
+              isDragActive ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50 hover:bg-muted/30',
+              uploading && 'pointer-events-none opacity-60'
+            )}
+          >
+            <input {...getInputProps()} />
+            {uploading ? (
+              <div className="text-center">
+                <Loader2 className="mx-auto h-10 w-10 text-primary animate-spin mb-3" />
+                <p className="text-sm font-medium">Uploading...</p>
+              </div>
+            ) : (
+              <>
+                <Upload className="mx-auto h-10 w-10 text-muted-foreground/40 mb-3" />
+                <p className="text-sm font-medium">
+                  {isDragActive ? 'Drop image here' : 'Drag & drop an image, or click to browse'}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  JPG, PNG, GIF, WebP, SVG
+                </p>
+              </>
+            )}
+          </div>
+
+          {uploadPreview && (
+            <div className="rounded-lg overflow-hidden border">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={uploadPreview}
+                alt="Upload preview"
+                className="w-full max-h-48 object-contain bg-muted"
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Library Tab ── */}
+      {tab === 'library' && (
+        <div className="space-y-4">
+          {/* Search */}
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                value={librarySearch}
+                onChange={(e) => setLibrarySearch(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') fetchLibrary(librarySearch || undefined)
+                }}
+                placeholder="Search by file name..."
+                className="pl-8 h-9"
+              />
+            </div>
+            <Button
+              onClick={() => fetchLibrary(librarySearch || undefined)}
+              disabled={libraryLoading}
+              size="sm"
+              className="h-9 shrink-0"
+            >
+              {libraryLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+            </Button>
+          </div>
+
+          {/* Results grid */}
+          {libraryAssets.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground">
+                {libraryAssets.length} image{libraryAssets.length !== 1 ? 's' : ''} — click to select
+              </p>
+              <div className="grid grid-cols-3 gap-2 max-h-[480px] overflow-y-auto">
+                {libraryAssets.map((asset) => (
+                  <div
+                    key={asset.id}
+                    className="group relative rounded-lg overflow-hidden border-2 border-transparent hover:border-primary cursor-pointer transition-all"
+                    onClick={() => {
+                      onImageSaved?.(asset)
+                      toast.success('Image selected from library!')
+                    }}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={asset.file_url}
+                      alt={asset.alt_text || asset.file_name}
+                      className="w-full aspect-square object-cover"
+                      loading="lazy"
+                    />
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <p className="text-[9px] text-white/80 truncate">{asset.file_name}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {libraryAssets.length === 0 && libraryLoaded && !libraryLoading && (
+            <div className="rounded-lg border-2 border-dashed p-10 text-center">
+              <FolderOpen className="mx-auto h-10 w-10 text-muted-foreground/30 mb-3" />
+              <p className="text-sm font-medium">No images in library</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Upload or generate images first — they&apos;ll appear here
+              </p>
+            </div>
+          )}
+
+          {libraryLoading && (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 text-muted-foreground animate-spin" />
             </div>
           )}
         </div>

@@ -5,6 +5,7 @@ import { getClients } from '@/lib/data'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Building2, ArrowRight, Zap } from 'lucide-react'
+import { AddClientCard, AddClientButton } from '@/components/clients/add-client-card'
 
 export const dynamic = 'force-dynamic'
 
@@ -102,6 +103,7 @@ export default async function HomePage() {
                 </Card>
               </Link>
             ))}
+            <AddClientCard />
           </div>
         ) : (
           <Card className="text-center py-12">
@@ -109,12 +111,15 @@ export default async function HomePage() {
               <Building2 className="mx-auto mb-4 h-12 w-12 text-muted-foreground/40" />
               <h2 className="text-xl font-semibold mb-2">No clients yet</h2>
               <p className="text-muted-foreground mb-4 max-w-md mx-auto">
-                Create your first client using Claude Code CLI. Just tell Claude about the business and it will set everything up.
+                Create your first client to get started.
               </p>
+              <div className="mb-6">
+                <AddClientButton />
+              </div>
               <div className="mx-auto max-w-lg rounded-lg bg-muted p-4 text-left">
                 <div className="flex items-center gap-2 mb-2">
                   <Zap className="h-4 w-4 text-primary" />
-                  <span className="text-sm font-medium">Try this prompt in Claude Code:</span>
+                  <span className="text-sm font-medium">Or use Claude Code CLI:</span>
                 </div>
                 <code className="text-sm text-muted-foreground">
                   &quot;Create a new client: Acme Corp. They&apos;re a SaaS company selling project management tools to small teams. Website: acme.com&quot;

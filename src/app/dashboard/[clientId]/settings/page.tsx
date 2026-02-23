@@ -1,9 +1,11 @@
 import { getClient } from '@/lib/data'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Building2, Globe, Target, Users, Palette } from 'lucide-react'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { IntegrationsForm } from '@/components/settings/integrations-form'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,6 +15,15 @@ interface SettingsPageProps {
 
 export default async function SettingsPage({ params }: SettingsPageProps) {
   const { clientId } = await params
+
+  // Auth check for role
+  const supabase = await createServerSupabaseClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  const role = user.user_metadata?.role as string | undefined
+  const isAdmin = role === 'admin'
+
   const client = await getClient(clientId)
 
   if (!client) notFound()
@@ -171,6 +182,23 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
             )}
           </CardContent>
         </Card>
+      </div>
+
+      <Separator />
+
+      {/* Integrations Section */}
+      <div>
+        <h2 className="text-lg font-semibold tracking-tight">Integrations</h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          {isAdmin
+            ? 'Connect external services for publishing and automation'
+            : 'Integration connection status'}
+        </p>
+        <IntegrationsForm
+          clientId={clientId}
+          integrations={client.integrations || {}}
+          isAdmin={isAdmin}
+        />
       </div>
 
       <Separator />
