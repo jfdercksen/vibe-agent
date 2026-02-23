@@ -36,6 +36,17 @@ yarn-error.log*
 # vercel
 .vercel
 
+# logs
+*.log
+dev-server.log
+server.log
+
+# windows artifacts
+nul
+
+# backup files
+*.bak
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
