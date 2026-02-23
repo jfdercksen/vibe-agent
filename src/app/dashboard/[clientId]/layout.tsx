@@ -1,8 +1,7 @@
 import { notFound, redirect } from 'next/navigation'
 import { getClient, getClients } from '@/lib/data'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { Sidebar } from '@/components/layout/sidebar'
-import { Header } from '@/components/layout/header'
+import { DashboardShell } from '@/components/layout/dashboard-shell'
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -58,19 +57,14 @@ export default async function DashboardLayout({ children, params }: DashboardLay
   }
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      <Sidebar clientId={clientId} isAdmin={isAdmin} />
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <Header
-          clients={clients}
-          currentClient={client}
-          isAdmin={isAdmin}
-          userEmail={user.email}
-        />
-        <main className="flex-1 overflow-y-auto bg-muted/30 p-6">
-          {children}
-        </main>
-      </div>
-    </div>
+    <DashboardShell
+      clientId={clientId}
+      isAdmin={isAdmin}
+      clients={clients}
+      currentClient={client}
+      userEmail={user.email}
+    >
+      {children}
+    </DashboardShell>
   )
 }

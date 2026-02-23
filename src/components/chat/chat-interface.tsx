@@ -59,7 +59,7 @@ export function ChatInterface({
   const [hasMoreHistory, setHasMoreHistory] = useState(false)
   const [currentStage, setCurrentStage] = useState(onboardingStage)
   const [isOnboardingCompleted, setIsOnboardingCompleted] = useState(onboardingCompleted)
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [skillsPanelOpen, setSkillsPanelOpen] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)

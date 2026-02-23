@@ -25,7 +25,7 @@ export function ClientSwitcher({ clients, currentClient }: ClientSwitcherProps) 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" className="w-[240px] justify-between">
+        <Button variant="outline" className="w-full max-w-[240px] justify-between">
           <div className="flex items-center gap-2">
             <Building2 className="h-4 w-4 text-muted-foreground" />
             <span className="truncate font-medium">

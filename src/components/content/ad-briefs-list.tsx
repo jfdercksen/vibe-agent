@@ -115,14 +115,14 @@ function ConceptCard({
       {/* Hook */}
       <div className="mb-2">
         <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-0.5">Hook</p>
-        <p className="text-sm italic text-foreground/80 leading-snug">&ldquo;{concept.hook}&rdquo;</p>
+        <p className="text-sm italic text-foreground/80 leading-snug break-words">&ldquo;{concept.hook}&rdquo;</p>
       </div>
 
       {/* Visual direction */}
       {concept.visual_direction && (
         <div className="mb-2">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-0.5">Visual</p>
-          <p className="text-xs text-muted-foreground line-clamp-2">{concept.visual_direction}</p>
+          <p className="text-xs text-muted-foreground line-clamp-2 break-words">{concept.visual_direction}</p>
         </div>
       )}
 
@@ -130,7 +130,7 @@ function ConceptCard({
       {concept.copy_direction && (
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-0.5">Copy</p>
-          <p className="text-xs text-muted-foreground line-clamp-3 whitespace-pre-line">{concept.copy_direction}</p>
+          <p className="text-xs text-muted-foreground line-clamp-3 whitespace-pre-line break-words">{concept.copy_direction}</p>
         </div>
       )}
     </div>
@@ -185,7 +185,7 @@ function AdBriefViewModal({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto overflow-x-hidden">
         <DialogHeader>
           <div className="flex items-start gap-3 pr-6">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-100 shrink-0">
@@ -213,13 +213,13 @@ function AdBriefViewModal({
             {brief.target_audience && (
               <div className="rounded-lg bg-muted/50 p-3">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Target Audience</p>
-                <p className="text-sm leading-snug">{brief.target_audience}</p>
+                <p className="text-sm leading-snug break-words">{brief.target_audience}</p>
               </div>
             )}
             {brief.tone_and_mood && (
               <div className="rounded-lg bg-muted/50 p-3">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Tone & Mood</p>
-                <p className="text-sm">{brief.tone_and_mood}</p>
+                <p className="text-sm break-words">{brief.tone_and_mood}</p>
               </div>
             )}
           </div>
@@ -228,7 +228,7 @@ function AdBriefViewModal({
           {brief.key_message && (
             <div className="rounded-lg bg-primary/5 border border-primary/20 px-4 py-3">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-primary mb-1">Key Message</p>
-              <p className="text-sm font-medium">{brief.key_message}</p>
+              <p className="text-sm font-medium break-words">{brief.key_message}</p>
             </div>
           )}
 
@@ -285,7 +285,7 @@ function AdBriefViewModal({
               <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Production Specs</p>
               <div className="space-y-1.5">
                 {(brief.production_specs as Array<Record<string, string>>).map((spec, i) => (
-                  <div key={i} className="rounded-md bg-muted/50 px-3 py-2 text-xs">
+                  <div key={i} className="rounded-md bg-muted/50 px-3 py-2 text-xs break-words">
                     <span className="font-medium">{spec.format || spec.name}</span>
                     {spec.dimensions && <span className="text-muted-foreground"> — {spec.dimensions}</span>}
                     {spec.file_type && <span className="text-muted-foreground"> · {spec.file_type}</span>}
@@ -478,7 +478,7 @@ export function AdBriefsList({ briefs, clientId }: AdBriefsListProps) {
           return (
             <Card
               key={brief.id}
-              className="flex flex-col cursor-pointer transition-all hover:shadow-md hover:border-primary/40 group"
+              className="flex flex-col overflow-hidden cursor-pointer transition-all hover:shadow-md hover:border-primary/40 group"
               onClick={() => setViewing(brief as CreativeBrief)}
             >
               <CardHeader className="pb-3">
@@ -498,21 +498,21 @@ export function AdBriefsList({ briefs, clientId }: AdBriefsListProps) {
                 </CardTitle>
               </CardHeader>
 
-              <CardContent className="flex-1 space-y-3">
+              <CardContent className="flex-1 space-y-3 min-w-0">
 
                 {/* Key message */}
                 {brief.key_message && (
-                  <p className="text-sm text-muted-foreground line-clamp-2">{brief.key_message}</p>
+                  <p className="text-sm text-muted-foreground line-clamp-2 break-words">{brief.key_message}</p>
                 )}
 
                 {/* Concepts summary */}
                 {concepts.length > 0 && (
                   <div className="rounded-md bg-muted/50 px-3 py-2">
-                    <div className="flex items-center justify-between mb-1.5">
-                      <p className="text-xs font-medium text-muted-foreground">
+                    <div className="flex items-center justify-between mb-1.5 min-w-0">
+                      <p className="text-xs font-medium text-muted-foreground truncate min-w-0">
                         {concepts.length} concept{concepts.length !== 1 ? 's' : ''}
                         {selectedConcept && (
-                          <span className="text-primary ml-2">· &ldquo;{selectedConcept.name}&rdquo; selected</span>
+                          <span className="text-primary ml-2 truncate">· &ldquo;{selectedConcept.name}&rdquo; selected</span>
                         )}
                       </p>
                       <div className="flex gap-1">
@@ -540,7 +540,7 @@ export function AdBriefsList({ briefs, clientId }: AdBriefsListProps) {
                 {brief.target_audience && (
                   <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
                     <Target className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                    <span className="line-clamp-1">{brief.target_audience}</span>
+                    <span className="line-clamp-1 break-words">{brief.target_audience}</span>
                   </div>
                 )}
 
