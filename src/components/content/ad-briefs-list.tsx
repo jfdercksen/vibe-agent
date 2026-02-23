@@ -82,15 +82,15 @@ function ConceptCard({
 
   return (
     <div
-      className={`rounded-lg border p-4 cursor-pointer transition-all hover:shadow-sm ${
+      className={`rounded-lg border p-4 cursor-pointer transition-all hover:shadow-sm overflow-hidden ${
         isSelected ? 'border-primary bg-primary/5 shadow-sm' : 'hover:border-primary/40'
       }`}
       onClick={onSelect}
     >
       <div className="flex items-start justify-between gap-2 mb-2">
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap min-w-0">
           <span className="text-xs font-semibold text-muted-foreground">#{index + 1}</span>
-          <span className="font-medium text-sm">{concept.name}</span>
+          <span className="font-medium text-sm break-words [overflow-wrap:anywhere]">{concept.name}</span>
           {isSelected && (
             <Badge className="text-[10px] h-4 bg-primary text-primary-foreground px-1.5">Selected</Badge>
           )}
@@ -115,14 +115,14 @@ function ConceptCard({
       {/* Hook */}
       <div className="mb-2">
         <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-0.5">Hook</p>
-        <p className="text-sm italic text-foreground/80 leading-snug break-words">&ldquo;{concept.hook}&rdquo;</p>
+        <p className="text-sm italic text-foreground/80 leading-snug break-words [overflow-wrap:anywhere]">&ldquo;{concept.hook}&rdquo;</p>
       </div>
 
       {/* Visual direction */}
       {concept.visual_direction && (
         <div className="mb-2">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-0.5">Visual</p>
-          <p className="text-xs text-muted-foreground line-clamp-2 break-words">{concept.visual_direction}</p>
+          <p className="text-xs text-muted-foreground line-clamp-2 break-words [overflow-wrap:anywhere]">{concept.visual_direction}</p>
         </div>
       )}
 
@@ -130,7 +130,7 @@ function ConceptCard({
       {concept.copy_direction && (
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-0.5">Copy</p>
-          <p className="text-xs text-muted-foreground line-clamp-3 whitespace-pre-line break-words">{concept.copy_direction}</p>
+          <p className="text-xs text-muted-foreground line-clamp-3 whitespace-pre-line break-words [overflow-wrap:anywhere]">{concept.copy_direction}</p>
         </div>
       )}
     </div>
@@ -206,51 +206,51 @@ function AdBriefViewModal({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-5 pt-2">
+        <div className="space-y-5 pt-2 overflow-hidden">
 
           {/* Meta strip */}
           <div className="grid grid-cols-2 gap-3 text-sm">
             {brief.target_audience && (
-              <div className="rounded-lg bg-muted/50 p-3">
+              <div className="rounded-lg bg-muted/50 p-3 overflow-hidden min-w-0">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Target Audience</p>
-                <p className="text-sm leading-snug break-words">{brief.target_audience}</p>
+                <p className="text-sm leading-snug break-words [overflow-wrap:anywhere]">{brief.target_audience}</p>
               </div>
             )}
             {brief.tone_and_mood && (
-              <div className="rounded-lg bg-muted/50 p-3">
+              <div className="rounded-lg bg-muted/50 p-3 overflow-hidden min-w-0">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Tone & Mood</p>
-                <p className="text-sm break-words">{brief.tone_and_mood}</p>
+                <p className="text-sm break-words [overflow-wrap:anywhere]">{brief.tone_and_mood}</p>
               </div>
             )}
           </div>
 
           {/* Key message */}
           {brief.key_message && (
-            <div className="rounded-lg bg-primary/5 border border-primary/20 px-4 py-3">
+            <div className="rounded-lg bg-primary/5 border border-primary/20 px-4 py-3 overflow-hidden">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-primary mb-1">Key Message</p>
-              <p className="text-sm font-medium break-words">{brief.key_message}</p>
+              <p className="text-sm font-medium break-words [overflow-wrap:anywhere]">{brief.key_message}</p>
             </div>
           )}
 
           {/* Mandatory / Avoid */}
           {(brief.mandatory_elements.length > 0 || brief.avoid_elements.length > 0) && (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3 overflow-hidden">
               {brief.mandatory_elements.length > 0 && (
-                <div>
+                <div className="overflow-hidden min-w-0">
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Must Include</p>
                   <div className="flex flex-wrap gap-1">
                     {brief.mandatory_elements.map((el) => (
-                      <Badge key={el} variant="secondary" className="text-xs font-normal">{el}</Badge>
+                      <Badge key={el} variant="secondary" className="text-xs font-normal max-w-full [overflow-wrap:anywhere]">{el}</Badge>
                     ))}
                   </div>
                 </div>
               )}
               {brief.avoid_elements.length > 0 && (
-                <div>
+                <div className="overflow-hidden min-w-0">
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Avoid</p>
                   <div className="flex flex-wrap gap-1">
                     {brief.avoid_elements.map((el) => (
-                      <Badge key={el} variant="outline" className="text-xs font-normal text-destructive border-destructive/30">{el}</Badge>
+                      <Badge key={el} variant="outline" className="text-xs font-normal text-destructive border-destructive/30 max-w-full [overflow-wrap:anywhere]">{el}</Badge>
                     ))}
                   </div>
                 </div>
@@ -285,7 +285,7 @@ function AdBriefViewModal({
               <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Production Specs</p>
               <div className="space-y-1.5">
                 {(brief.production_specs as Array<Record<string, string>>).map((spec, i) => (
-                  <div key={i} className="rounded-md bg-muted/50 px-3 py-2 text-xs break-words">
+                  <div key={i} className="rounded-md bg-muted/50 px-3 py-2 text-xs break-words [overflow-wrap:anywhere]">
                     <span className="font-medium">{spec.format || spec.name}</span>
                     {spec.dimensions && <span className="text-muted-foreground"> — {spec.dimensions}</span>}
                     {spec.file_type && <span className="text-muted-foreground"> · {spec.file_type}</span>}
@@ -481,7 +481,7 @@ export function AdBriefsList({ briefs, clientId }: AdBriefsListProps) {
               className="flex flex-col overflow-hidden cursor-pointer transition-all hover:shadow-md hover:border-primary/40 group"
               onClick={() => setViewing(brief as CreativeBrief)}
             >
-              <CardHeader className="pb-3">
+              <CardHeader className="pb-3 overflow-hidden">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-100 group-hover:bg-orange-200 transition-colors shrink-0">
@@ -493,7 +493,7 @@ export function AdBriefsList({ briefs, clientId }: AdBriefsListProps) {
                   </div>
                   <StatusBadge status={brief.status} />
                 </div>
-                <CardTitle className="text-base leading-snug mt-2 group-hover:text-primary transition-colors">
+                <CardTitle className="text-base leading-snug mt-2 group-hover:text-primary transition-colors break-words [overflow-wrap:anywhere]">
                   {brief.brief_name}
                 </CardTitle>
               </CardHeader>
@@ -502,17 +502,17 @@ export function AdBriefsList({ briefs, clientId }: AdBriefsListProps) {
 
                 {/* Key message */}
                 {brief.key_message && (
-                  <p className="text-sm text-muted-foreground line-clamp-2 break-words">{brief.key_message}</p>
+                  <p className="text-sm text-muted-foreground line-clamp-2 break-words [overflow-wrap:anywhere]">{brief.key_message}</p>
                 )}
 
                 {/* Concepts summary */}
                 {concepts.length > 0 && (
-                  <div className="rounded-md bg-muted/50 px-3 py-2">
-                    <div className="flex items-center justify-between mb-1.5 min-w-0">
-                      <p className="text-xs font-medium text-muted-foreground truncate min-w-0">
+                  <div className="rounded-md bg-muted/50 px-3 py-2 overflow-hidden">
+                    <div className="flex items-center justify-between mb-1.5 min-w-0 gap-2">
+                      <p className="text-xs font-medium text-muted-foreground truncate min-w-0 flex-1">
                         {concepts.length} concept{concepts.length !== 1 ? 's' : ''}
                         {selectedConcept && (
-                          <span className="text-primary ml-2 truncate">· &ldquo;{selectedConcept.name}&rdquo; selected</span>
+                          <span className="text-primary ml-2">· &ldquo;{selectedConcept.name}&rdquo; selected</span>
                         )}
                       </p>
                       <div className="flex gap-1">
@@ -538,9 +538,9 @@ export function AdBriefsList({ briefs, clientId }: AdBriefsListProps) {
 
                 {/* Audience */}
                 {brief.target_audience && (
-                  <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
+                  <div className="flex items-start gap-1.5 text-xs text-muted-foreground min-w-0">
                     <Target className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                    <span className="line-clamp-1 break-words">{brief.target_audience}</span>
+                    <span className="line-clamp-1 break-words [overflow-wrap:anywhere] min-w-0">{brief.target_audience}</span>
                   </div>
                 )}
 
