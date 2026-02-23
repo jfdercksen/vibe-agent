@@ -56,6 +56,7 @@ export function ChatInterface({
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isLoadingHistory, setIsLoadingHistory] = useState(true)
+  const [hasMoreHistory, setHasMoreHistory] = useState(false)
   const [currentStage, setCurrentStage] = useState(onboardingStage)
   const [isOnboardingCompleted, setIsOnboardingCompleted] = useState(onboardingCompleted)
   const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -87,6 +88,7 @@ export function ChatInterface({
         const res = await fetch(`/api/chat/history?clientId=${clientId}`)
         const data = await res.json()
         const saved: Array<{ id: string; role: string; content: string; created_at: string }> = data.messages || []
+        setHasMoreHistory(data.hasMore || false)
 
         if (saved.length > 0) {
           // Restore previous messages
@@ -340,6 +342,13 @@ export function ChatInterface({
 
         <div className="flex-1 overflow-y-auto px-4 py-6">
           <div className="max-w-3xl mx-auto">
+            {hasMoreHistory && (
+              <div className="text-center py-3 mb-4">
+                <span className="text-xs text-muted-foreground bg-muted px-3 py-1 rounded-full">
+                  Showing recent messages — older history is available
+                </span>
+              </div>
+            )}
             {messages.map((message) => (
               <MessageBubble key={message.id} message={message} />
             ))}

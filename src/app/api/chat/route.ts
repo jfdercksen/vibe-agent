@@ -317,6 +317,7 @@ export async function POST(request: NextRequest) {
           // Agentic loop — Claude can call tools multiple times
           let continueLoop = true
           let currentMessages = messages
+          const failedTools: Array<{ toolName: string; error: string }> = []
 
           while (continueLoop) {
             const response = await anthropic.messages.create({
@@ -439,6 +440,8 @@ export async function POST(request: NextRequest) {
                   })
                 } catch (err) {
                   const errorMsg = err instanceof Error ? err.message : 'Tool execution failed'
+                  console.error(`[chat] Tool ${toolName} failed:`, errorMsg)
+                  failedTools.push({ toolName, error: errorMsg })
                   send({
                     type: 'tool_error',
                     toolName,
@@ -467,6 +470,16 @@ export async function POST(request: NextRequest) {
               // No more tool calls — done
               continueLoop = false
             }
+          }
+
+          // If any tools failed during the agentic loop, append a warning
+          if (failedTools.length > 0) {
+            const failureSummary = failedTools
+              .map(f => `• ${f.toolName}: ${f.error}`)
+              .join('\n')
+            const warningText = `\n\n⚠️ **Some actions failed:**\n${failureSummary}\n\nPlease try again or check the dashboard to verify what was saved.`
+            fullAssistantText += warningText
+            send({ type: 'text', content: warningText })
           }
 
           // Save final assistant message

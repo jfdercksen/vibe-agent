@@ -101,15 +101,20 @@ export async function updateClientOnboardingStage(
   stage: number,
   completed = false
 ): Promise<void> {
-  const supabase = createAdminClient()
-  await supabase
-    .from('clients')
-    .update({
-      onboarding_stage: stage,
-      onboarding_completed: completed,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', clientId)
+  try {
+    const supabase = createAdminClient()
+    const { error } = await supabase
+      .from('clients')
+      .update({
+        onboarding_stage: stage,
+        onboarding_completed: completed,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', clientId)
+    if (error) console.error('[updateClientOnboardingStage] Failed:', error.message)
+  } catch (err) {
+    console.error('[updateClientOnboardingStage] Exception:', err)
+  }
 }
 
 export async function saveChatMessage(
@@ -123,16 +128,21 @@ export async function saveChatMessage(
     onboardingStage?: number
   }
 ): Promise<void> {
-  const supabase = createAdminClient()
-  await supabase.from('chat_messages').insert({
-    client_id: clientId,
-    role,
-    content,
-    tool_name: toolData?.toolName,
-    tool_input: toolData?.toolInput,
-    tool_output: toolData?.toolOutput,
-    onboarding_stage: toolData?.onboardingStage,
-  })
+  try {
+    const supabase = createAdminClient()
+    const { error } = await supabase.from('chat_messages').insert({
+      client_id: clientId,
+      role,
+      content,
+      tool_name: toolData?.toolName,
+      tool_input: toolData?.toolInput,
+      tool_output: toolData?.toolOutput,
+      onboarding_stage: toolData?.onboardingStage,
+    })
+    if (error) console.error(`[saveChatMessage] Failed to save ${role} message:`, error.message)
+  } catch (err) {
+    console.error('[saveChatMessage] Exception:', err)
+  }
 }
 
 export async function getChatHistory(
