@@ -185,8 +185,8 @@ function AdBriefViewModal({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto overflow-x-hidden">
-        <DialogHeader>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogHeader className="shrink-0">
           <div className="flex items-start gap-3 pr-6">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-100 shrink-0">
               <Megaphone className="h-5 w-5 text-orange-600" />
@@ -195,10 +195,10 @@ function AdBriefViewModal({
               <div className="flex items-center gap-2 mb-1 flex-wrap">
                 <StatusBadge status={brief.status} />
                 {brief.campaign_goal && (
-                  <Badge variant="outline" className="text-xs">{brief.campaign_goal}</Badge>
+                  <Badge variant="outline" className="text-xs truncate max-w-[200px]">{brief.campaign_goal}</Badge>
                 )}
               </div>
-              <DialogTitle className="text-lg leading-snug">{brief.brief_name}</DialogTitle>
+              <DialogTitle className="text-lg leading-snug break-words">{brief.brief_name}</DialogTitle>
             </div>
           </div>
           <DialogDescription className="sr-only">
@@ -206,18 +206,18 @@ function AdBriefViewModal({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-5 pt-2 overflow-hidden">
+        <div className="space-y-5 pt-2 overflow-y-auto overflow-x-hidden min-w-0 flex-1 pr-1">
 
           {/* Meta strip */}
-          <div className="grid grid-cols-2 gap-3 text-sm">
+          <div className="grid grid-cols-2 gap-3 text-sm min-w-0">
             {brief.target_audience && (
-              <div className="rounded-lg bg-muted/50 p-3 overflow-hidden min-w-0">
+              <div className="rounded-lg bg-muted/50 p-3 overflow-hidden min-w-0 w-full">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Target Audience</p>
                 <p className="text-sm leading-snug break-words [overflow-wrap:anywhere]">{brief.target_audience}</p>
               </div>
             )}
             {brief.tone_and_mood && (
-              <div className="rounded-lg bg-muted/50 p-3 overflow-hidden min-w-0">
+              <div className="rounded-lg bg-muted/50 p-3 overflow-hidden min-w-0 w-full">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Tone & Mood</p>
                 <p className="text-sm break-words [overflow-wrap:anywhere]">{brief.tone_and_mood}</p>
               </div>
@@ -226,7 +226,7 @@ function AdBriefViewModal({
 
           {/* Key message */}
           {brief.key_message && (
-            <div className="rounded-lg bg-primary/5 border border-primary/20 px-4 py-3 overflow-hidden">
+            <div className="rounded-lg bg-primary/5 border border-primary/20 px-4 py-3 overflow-hidden min-w-0 w-full">
               <p className="text-[10px] font-semibold uppercase tracking-wider text-primary mb-1">Key Message</p>
               <p className="text-sm font-medium break-words [overflow-wrap:anywhere]">{brief.key_message}</p>
             </div>
@@ -234,23 +234,23 @@ function AdBriefViewModal({
 
           {/* Mandatory / Avoid */}
           {(brief.mandatory_elements.length > 0 || brief.avoid_elements.length > 0) && (
-            <div className="grid grid-cols-2 gap-3 overflow-hidden">
+            <div className="grid grid-cols-2 gap-3 overflow-hidden min-w-0">
               {brief.mandatory_elements.length > 0 && (
-                <div className="overflow-hidden min-w-0">
+                <div className="overflow-hidden min-w-0 w-full">
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Must Include</p>
                   <div className="flex flex-wrap gap-1">
                     {brief.mandatory_elements.map((el) => (
-                      <Badge key={el} variant="secondary" className="text-xs font-normal max-w-full [overflow-wrap:anywhere]">{el}</Badge>
+                      <Badge key={el} variant="secondary" className="text-xs font-normal max-w-full break-words [overflow-wrap:anywhere]">{el}</Badge>
                     ))}
                   </div>
                 </div>
               )}
               {brief.avoid_elements.length > 0 && (
-                <div className="overflow-hidden min-w-0">
+                <div className="overflow-hidden min-w-0 w-full">
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Avoid</p>
                   <div className="flex flex-wrap gap-1">
                     {brief.avoid_elements.map((el) => (
-                      <Badge key={el} variant="outline" className="text-xs font-normal text-destructive border-destructive/30 max-w-full [overflow-wrap:anywhere]">{el}</Badge>
+                      <Badge key={el} variant="outline" className="text-xs font-normal text-destructive border-destructive/30 max-w-full break-words [overflow-wrap:anywhere]">{el}</Badge>
                     ))}
                   </div>
                 </div>
