@@ -16,6 +16,7 @@ import {
   Settings,
   Zap,
   MessageSquare,
+  MessageCircle,
   Megaphone,
   Globe,
   X,
@@ -39,6 +40,7 @@ interface SidebarProps {
 
 const navigation: NavItem[] = [
   { name: 'Chat with Vibe', href: '/chat', icon: MessageSquare, highlight: true, adminOnly: true },
+  { name: 'WhatsApp', href: '/whatsapp', icon: MessageCircle, adminOnly: true },
   { name: 'Overview', href: '', icon: LayoutDashboard },
   { name: 'Content Ideas', href: '/content', icon: Lightbulb },
   { name: 'Social Posts', href: '/social', icon: Share2 },

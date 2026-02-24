@@ -47,6 +47,33 @@ export interface IntegrationConfig {
     base_url: string
     webhook_secret?: string
   }
+  whatsapp?: {
+    access_token: string        // Permanent Meta system user token
+    phone_number_id: string     // Meta Phone Number ID
+    verify_token: string        // Secret string for webhook verification
+    agent_prompt: string        // Claude's persona/instructions for this client
+  }
+}
+
+export interface WhatsAppConversation {
+  id: string
+  client_id: string
+  phone_number: string
+  contact_name: string | null
+  last_message_at: string
+  created_at: string
+}
+
+export interface WhatsAppMessage {
+  id: string
+  conversation_id: string
+  role: 'user' | 'assistant'
+  content: string
+  created_at: string
+}
+
+export interface WhatsAppConversationWithMessages extends WhatsAppConversation {
+  whatsapp_messages: WhatsAppMessage[]
 }
 
 export interface Client {

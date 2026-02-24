@@ -3,7 +3,8 @@ import type {
   Client, BrandVoice, PositioningAngle, ContentIdea,
   SocialPost, BlogPost, EmailSequence, Email,
   KeywordResearch, ContentCalendar, LeadMagnet,
-  CreativeBrief, MediaAsset, ClientStats, LandingPage
+  CreativeBrief, MediaAsset, ClientStats, LandingPage,
+  WhatsAppConversationWithMessages, WhatsAppMessage
 } from '@/lib/types/database'
 
 // ---- Clients ----
@@ -372,4 +373,38 @@ export async function getRecentActivity(clientId: string, limit = 10) {
   return activities
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     .slice(0, limit)
+}
+
+// ---- WhatsApp ----
+
+export async function getWhatsAppConversations(clientId: string): Promise<WhatsAppConversationWithMessages[]> {
+  const supabase = createAdminClient()
+  const { data, error } = await supabase
+    .from('whatsapp_conversations')
+    .select('*, whatsapp_messages(*)')
+    .eq('client_id', clientId)
+    .order('last_message_at', { ascending: false })
+    .limit(50)
+
+  if (error) throw error
+  return (data || []).map(conv => ({
+    ...conv,
+    whatsapp_messages: (conv.whatsapp_messages || []).sort(
+      (a: WhatsAppMessage, b: WhatsAppMessage) =>
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    ),
+  }))
+}
+
+export async function getWhatsAppMessages(conversationId: string): Promise<WhatsAppMessage[]> {
+  const supabase = createAdminClient()
+  const { data, error } = await supabase
+    .from('whatsapp_messages')
+    .select('*')
+    .eq('conversation_id', conversationId)
+    .order('created_at', { ascending: true })
+    .limit(200)
+
+  if (error) throw error
+  return data || []
 }

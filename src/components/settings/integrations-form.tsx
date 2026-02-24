@@ -5,7 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import { Globe, Mail, Share2, Workflow, Eye, EyeOff, Loader2, Check } from 'lucide-react'
+import { Globe, Mail, Share2, Workflow, Eye, EyeOff, Loader2, Check, MessageCircle } from 'lucide-react'
+import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
 import type { IntegrationConfig } from '@/lib/types/database'
 
@@ -39,6 +40,11 @@ export function IntegrationsForm({ clientId, integrations: initial }: Integratio
         clientId={clientId}
         config={integrations.n8n}
         onSaved={(n8n) => setIntegrations(prev => ({ ...prev, n8n }))}
+      />
+      <WhatsAppCard
+        clientId={clientId}
+        config={integrations.whatsapp}
+        onSaved={(wa) => setIntegrations(prev => ({ ...prev, whatsapp: wa }))}
       />
     </div>
   )
@@ -389,6 +395,107 @@ function N8nCard({
         <Button onClick={handleSave} disabled={saving} className="w-full" size="sm">
           {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
           Save n8n Settings
+        </Button>
+      </CardContent>
+    </Card>
+  )
+}
+
+// ─── WhatsApp Card ────────────────────────────────────────────
+
+function WhatsAppCard({
+  clientId,
+  config,
+  onSaved,
+}: {
+  clientId: string
+  config?: IntegrationConfig['whatsapp']
+  onSaved: (wa: IntegrationConfig['whatsapp']) => void
+}) {
+  const [accessToken, setAccessToken] = useState(config?.access_token || '')
+  const [phoneNumberId, setPhoneNumberId] = useState(config?.phone_number_id || '')
+  const [verifyToken, setVerifyToken] = useState(config?.verify_token || '')
+  const [agentPrompt, setAgentPrompt] = useState(
+    config?.agent_prompt ||
+    'You are a helpful customer support assistant. Be friendly, concise, and professional. Answer questions about the business and help customers with their enquiries.'
+  )
+  const [saving, setSaving] = useState(false)
+
+  const handleSave = async () => {
+    if (!accessToken.trim()) { toast.error('Access Token is required'); return }
+    if (!phoneNumberId.trim()) { toast.error('Phone Number ID is required'); return }
+    if (!verifyToken.trim()) { toast.error('Verify Token is required'); return }
+    if (!agentPrompt.trim()) { toast.error('Agent Prompt is required'); return }
+    setSaving(true)
+    const wa = {
+      access_token: accessToken.trim(),
+      phone_number_id: phoneNumberId.trim(),
+      verify_token: verifyToken.trim(),
+      agent_prompt: agentPrompt.trim(),
+    }
+    const ok = await saveIntegration(clientId, 'whatsapp', wa)
+    if (ok) onSaved(wa)
+    setSaving(false)
+  }
+
+  const webhookUrl = typeof window !== 'undefined'
+    ? `${window.location.origin}/api/webhooks/whatsapp`
+    : '/api/webhooks/whatsapp'
+
+  return (
+    <Card className="lg:col-span-2">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <MessageCircle className="h-5 w-5 text-green-600" />
+            WhatsApp AI Agent
+          </CardTitle>
+          <StatusDot connected={!!config?.access_token} />
+        </div>
+        <CardDescription>
+          Auto-reply to customer WhatsApp messages using Claude AI
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Webhook URL display */}
+        <div className="rounded-md bg-muted/60 border px-3 py-2.5 space-y-1">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Webhook URL (paste into Meta)</p>
+          <p className="text-xs font-mono break-all select-all text-foreground">{webhookUrl}</p>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="wa-token">Meta Access Token (System User)</Label>
+            <PasswordInput id="wa-token" value={accessToken} onChange={setAccessToken} placeholder="EAAxxxxxxxx..." />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="wa-phone-id">Phone Number ID</Label>
+            <Input id="wa-phone-id" value={phoneNumberId} onChange={(e) => setPhoneNumberId(e.target.value)} placeholder="123456789012345" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="wa-verify">Verify Token</Label>
+            <PasswordInput id="wa-verify" value={verifyToken} onChange={setVerifyToken} placeholder="your-secret-verify-token" />
+            <p className="text-[11px] text-muted-foreground">Any secret string — must match what you enter in Meta Developer Dashboard</p>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="wa-prompt">Agent Prompt</Label>
+          <Textarea
+            id="wa-prompt"
+            value={agentPrompt}
+            onChange={(e) => setAgentPrompt(e.target.value)}
+            placeholder="You are a helpful customer support assistant for [Business Name]..."
+            className="min-h-[120px] text-sm"
+          />
+          <p className="text-[11px] text-muted-foreground">
+            This is Claude&apos;s persona and instructions for responding to WhatsApp customers. Include business name, policies, tone, and any specific knowledge.
+          </p>
+        </div>
+
+        <Button onClick={handleSave} disabled={saving} className="w-full" size="sm">
+          {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
+          Save WhatsApp Settings
         </Button>
       </CardContent>
     </Card>
