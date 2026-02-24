@@ -5,7 +5,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Globe, Mail, Share2, Workflow, Eye, EyeOff, Loader2, Check } from 'lucide-react'
 import { toast } from 'sonner'
 import type { IntegrationConfig } from '@/lib/types/database'
@@ -13,15 +12,10 @@ import type { IntegrationConfig } from '@/lib/types/database'
 interface IntegrationsFormProps {
   clientId: string
   integrations: IntegrationConfig
-  isAdmin: boolean
 }
 
-export function IntegrationsForm({ clientId, integrations: initial, isAdmin }: IntegrationsFormProps) {
+export function IntegrationsForm({ clientId, integrations: initial }: IntegrationsFormProps) {
   const [integrations, setIntegrations] = useState<IntegrationConfig>(initial || {})
-
-  if (!isAdmin) {
-    return <IntegrationsStatusView integrations={integrations} />
-  }
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
@@ -46,34 +40,6 @@ export function IntegrationsForm({ clientId, integrations: initial, isAdmin }: I
         config={integrations.n8n}
         onSaved={(n8n) => setIntegrations(prev => ({ ...prev, n8n }))}
       />
-    </div>
-  )
-}
-
-// ─── Status-only view for client users ────────────────────────
-
-function IntegrationsStatusView({ integrations }: { integrations: IntegrationConfig }) {
-  const items = [
-    { name: 'WordPress', icon: Globe, connected: !!integrations.wordpress?.url },
-    { name: 'Mailchimp', icon: Mail, connected: !!integrations.mailchimp?.api_key },
-    { name: 'Meta (Facebook/Instagram)', icon: Share2, connected: !!integrations.meta?.access_token },
-    { name: 'LinkedIn', icon: Share2, connected: !!integrations.linkedin?.org_id },
-    { name: 'n8n Automation', icon: Workflow, connected: !!integrations.n8n?.base_url },
-  ]
-
-  return (
-    <div className="grid gap-4 lg:grid-cols-2">
-      {items.map((item) => (
-        <Card key={item.name}>
-          <CardContent className="flex items-center gap-3 pt-6">
-            <item.icon className="h-5 w-5 text-muted-foreground" />
-            <span className="text-sm font-medium flex-1">{item.name}</span>
-            <Badge variant={item.connected ? 'default' : 'secondary'} className={item.connected ? 'bg-green-100 text-green-700 hover:bg-green-100' : ''}>
-              {item.connected ? 'Connected' : 'Not Connected'}
-            </Badge>
-          </CardContent>
-        </Card>
-      ))}
     </div>
   )
 }
