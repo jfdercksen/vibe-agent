@@ -18,6 +18,16 @@ export type ContentTable =
   | 'media_assets'
   | 'clients'
 
+// Generate a batch ID for a Content Atomizer run.
+// Returns a UUID + label that Claude must pass into every save_content call for the batch.
+// No DB write — the UUID is generated server-side and used as a shared tag.
+export function startBatch(label: string): { batch_id: string; batch_label: string } {
+  return {
+    batch_id: crypto.randomUUID(),
+    batch_label: label.trim().slice(0, 60),
+  }
+}
+
 export async function saveContent(
   table: ContentTable,
   data: Record<string, unknown>

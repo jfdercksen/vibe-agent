@@ -109,3 +109,18 @@ Create (core content)
 - [ ] Distribution schedule spreads content across 1-2 weeks
 - [ ] Each asset has a clear CTA
 - [ ] No AI artifacts in any piece
+
+## Database Save Protocol (Non-Negotiable)
+When saving Content Atomizer output to Supabase, follow the two-step batch save so all posts from this run are grouped together in the dashboard for campaign review.
+
+**Step 1 — Start the batch ONCE before saving any posts:**
+Call `start_batch({ label: '<core content title — max 60 chars>' })` → receives back `{ batch_id, batch_label }`
+
+**Step 2 — Include batch_id + batch_label in EVERY post save:**
+Call `save_content('social_posts', { client_id, platform, post_type, hook, body, cta, hashtags, character_count, image_prompt, status: 'draft', batch_id, batch_label })` for each post.
+
+**Rules:**
+- Call `start_batch` ONCE per atomizer run — not once per post
+- Use the SAME `batch_id` for ALL 15+ posts in the run
+- Generate a NEW `batch_id` for each new atomizer run — never reuse
+- NEVER save atomized posts without `batch_id` — they become ungroupable orphans in the dashboard

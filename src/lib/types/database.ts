@@ -153,6 +153,8 @@ export interface SocialPost {
   id: string
   client_id: string
   content_idea_id: string | null
+  batch_id: string | null       // Groups posts from one Content Atomizer run
+  batch_label: string | null    // Human-readable batch name e.g. "Blog: How to scale revenue"
   platform: Platform
   post_type: PostType | null
   hook: string | null

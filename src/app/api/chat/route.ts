@@ -9,6 +9,7 @@ import { perplexitySearch } from '@/lib/tools/perplexity'
 import { firecrawlScrape, firecrawlCrawl } from '@/lib/tools/firecrawl'
 import { getKeywordData, getSerpResults, getKeywordSuggestions } from '@/lib/tools/dataforseo'
 import {
+  startBatch,
   saveContent,
   updateContent,
   getClientContext,
@@ -97,6 +98,9 @@ async function executeTool(
         (toolInput.locationCode as number) || 2840,
         (toolInput.limit as number) || 20
       )
+
+    case 'start_batch':
+      return startBatch(toolInput.label as string)
 
     case 'save_content': {
       const data = { ...(toolInput.data as Record<string, unknown>), client_id: clientId }
@@ -577,6 +581,8 @@ function getToolSummary(
       const r = result as unknown[]
       return `Found ${r?.length || 0} keyword suggestions for "${input.seedKeyword}"`
     }
+    case 'start_batch':
+      return `Batch started: "${input.label}"`
     case 'save_content':
       return `Saved to ${input.table}`
     case 'update_client': {

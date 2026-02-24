@@ -154,6 +154,30 @@ Returns up to 20 related keywords with volume and difficulty data.`,
   // ─── SUPABASE DATA TOOLS ──────────────────────────────────────────────────
 
   {
+    name: 'start_batch',
+    description: `Generate a batch ID before saving a set of atomized social posts.
+CALL THIS ONCE at the very start of a Content Atomizer run, then pass the returned
+batch_id and batch_label into EVERY save_content('social_posts', {...}) call in the batch.
+
+This groups all posts from the same atomization run together so they can be
+reviewed side-by-side in the dashboard as a cohesive campaign.
+
+⚠️ NEVER save atomized posts without batch_id — they become ungroupable orphans.
+⚠️ Use the SAME batch_id for ALL posts in one atomizer run.
+⚠️ Generate a NEW batch_id for each new atomizer run — never reuse a previous one.`,
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        label: {
+          type: 'string',
+          description: 'Short human-readable label for this batch, max 60 chars. E.g. "Blog: How to scale revenue" or "Podcast: EP42 – Growth hacks"',
+        },
+      },
+      required: ['label'],
+    },
+  },
+
+  {
     name: 'save_content',
     description: `Save generated content to the Supabase database.
 Use this after creating any content asset to persist it for the client.
@@ -525,6 +549,7 @@ export type ToolName =
   | 'dataforseo_keywords'
   | 'dataforseo_serp'
   | 'dataforseo_keyword_suggestions'
+  | 'start_batch'
   | 'save_content'
   | 'update_client'
   | 'update_content'
@@ -543,6 +568,7 @@ export const TOOL_LABELS: Record<ToolName, { icon: string; label: string; color:
   dataforseo_keywords: { icon: '📊', label: 'Fetching keyword data', color: 'green' },
   dataforseo_serp: { icon: '🏆', label: 'Checking search rankings', color: 'green' },
   dataforseo_keyword_suggestions: { icon: '💡', label: 'Finding keyword suggestions', color: 'green' },
+  start_batch: { icon: '📦', label: 'Starting content batch', color: 'purple' },
   save_content: { icon: '💾', label: 'Saving to dashboard', color: 'purple' },
   update_client: { icon: '🏢', label: 'Updating client profile', color: 'purple' },
   update_content: { icon: '✏️', label: 'Updating record', color: 'purple' },

@@ -325,7 +325,13 @@ Always use the brand voice and selected positioning angle in all copy.
   ⚠️ CRITICAL: NEVER save positioning angles as a blog_post or content_idea. They MUST go to the 'positioning_angles' table.
   ⚠️ CRITICAL: Save EACH angle as a SEPARATE record — not one combined document.
   Required fields: client_id, angle_number (1-5), framework (string), core_hook (string), psychology (string), headline_directions (array of strings), anti_angle (string), risk (string), is_selected (false initially), score ({differentiation:N, risk:N, memorability:N})
-- Social posts → save_content('social_posts', {...}) for each post
+- Social posts (individual) → save_content('social_posts', {...}) for each post
+- Content Atomizer batches → TWO-STEP SAVE — CRITICAL:
+  1. FIRST call start_batch({ label: '<source content title — max 60 chars>' }) — returns { batch_id, batch_label }
+  2. THEN for EVERY post call save_content('social_posts', { ..., batch_id, batch_label }) using the SAME batch_id from step 1
+  ⚠️ NEVER save atomized posts without batch_id — they become ungroupable orphans in the dashboard
+  ⚠️ Use the SAME batch_id for ALL posts in one Content Atomizer run
+  ⚠️ Generate a NEW batch_id for each new atomizer run — never reuse a previous one
 - Blog posts → save_content('blog_posts', {...})
 - Content ideas → save_content('content_ideas', {...})
 - Ad creative briefs → save_content('creative_briefs', {

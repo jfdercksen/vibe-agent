@@ -20,6 +20,7 @@ import { ApprovalButtons } from '@/components/content/approval-buttons'
 import { ScheduleModal } from '@/components/content/schedule-modal'
 import { SocialPostEditModal } from '@/components/content/social-post-edit-modal'
 import { ImageGeneratorTrigger, ImageGeneratorPanel } from '@/components/images/image-generator-panel'
+import { BatchGroupView } from '@/components/content/batch-group-view'
 import {
   Share2,
   Calendar,
@@ -35,6 +36,8 @@ import {
   Pencil,
   RefreshCw,
   ExternalLink,
+  LayoutGrid,
+  Layers,
 } from 'lucide-react'
 import { formatDistanceToNow, format } from 'date-fns'
 import type { SocialPost } from '@/lib/types/database'
@@ -267,6 +270,7 @@ function PostExpandModal({
 }
 
 export function SocialPostsList({ posts, clientId }: SocialPostsListProps) {
+  const [viewMode, setViewMode] = useState<'grid' | 'batches'>('grid')
   const [platformFilter, setPlatformFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [page, setPage] = useState(1)
@@ -341,7 +345,7 @@ export function SocialPostsList({ posts, clientId }: SocialPostsListProps) {
           </TabsList>
         </Tabs>
 
-        {/* Status Filter */}
+        {/* Status Filter + View Toggle */}
         <div className="flex items-center gap-3 flex-wrap">
           <span className="text-sm font-medium text-muted-foreground">Status:</span>
           <Select value={statusFilter} onValueChange={handleStatusChange}>
@@ -365,12 +369,49 @@ export function SocialPostsList({ posts, clientId }: SocialPostsListProps) {
               {filtered.length} of {posts.length} posts
             </span>
           )}
-          {/* Per-post image generation is available inside each post's expand view */}
+
+          {/* View mode toggle */}
+          <div className="ml-auto flex items-center gap-1 border rounded-md p-0.5 bg-muted/30">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+                viewMode === 'grid'
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+              title="All Posts (grid)"
+            >
+              <LayoutGrid className="h-3.5 w-3.5" />
+              All Posts
+            </button>
+            <button
+              onClick={() => setViewMode('batches')}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+                viewMode === 'batches'
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+              title="Batches view"
+            >
+              <Layers className="h-3.5 w-3.5" />
+              Batches
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Posts Grid */}
-      {paginated.length > 0 ? (
+      {/* Batches View */}
+      {viewMode === 'batches' && (
+        <BatchGroupView
+          posts={mergedPosts}
+          clientId={clientId}
+          onApplyLocalUpdate={applyLocalUpdate}
+          onExpandPost={(post) => setExpandedPost(post)}
+        />
+      )}
+
+      {/* Posts Grid (only in grid view) */}
+      {viewMode === 'grid' && (paginated.length > 0 ? (
         <>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {paginated.map((post) => {
@@ -555,7 +596,7 @@ export function SocialPostsList({ posts, clientId }: SocialPostsListProps) {
             </p>
           </CardContent>
         </Card>
-      )}
+      ))}
 
       {/* Expand Modal */}
       <PostExpandModal
