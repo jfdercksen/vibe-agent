@@ -44,7 +44,7 @@ export default async function ChatPage({ params }: ChatPageProps) {
   }
 
   return (
-    <div className="flex flex-col h-full -m-6">
+    <div className="flex flex-col h-full -m-4 md:-m-6">
       <ChatInterface
         clientId={client.id}
         clientName={client.display_name || client.name}

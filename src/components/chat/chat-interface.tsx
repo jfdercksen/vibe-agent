@@ -307,10 +307,10 @@ export function ChatInterface({
   return (
     <div className="flex h-full bg-muted/20 overflow-hidden">
 
-      {/* ── Left sidebar: Prompt Library ── */}
+      {/* ── Left sidebar: Prompt Library (desktop only) ── */}
       <div
         className={cn(
-          'flex-shrink-0 border-r bg-background transition-all duration-200 overflow-hidden',
+          'hidden md:block flex-shrink-0 border-r bg-background transition-all duration-200 overflow-hidden',
           sidebarOpen ? 'w-64' : 'w-0'
         )}
       >
@@ -330,54 +330,58 @@ export function ChatInterface({
           isLoading={isLoading}
         />
 
-        {/* Toggle left sidebar button */}
-        <div className="absolute top-3 left-3 z-10">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 rounded-md text-muted-foreground hover:text-foreground"
-            onClick={() => setSidebarOpen((v) => !v)}
-            title={sidebarOpen ? 'Hide prompt library' : 'Show prompt library'}
-          >
-            {sidebarOpen
-              ? <PanelLeftClose className="h-4 w-4" />
-              : <PanelLeftOpen className="h-4 w-4" />
-            }
-          </Button>
+        {/* ── Top toolbar row (sidebar toggles + new chat) ── */}
+        <div className="flex items-center justify-between px-2 pt-2 pb-0 shrink-0">
+
+          {/* Left: prompt library toggle (desktop only) */}
+          <div className="hidden md:block">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 rounded-md text-muted-foreground hover:text-foreground"
+              onClick={() => setSidebarOpen((v) => !v)}
+              title={sidebarOpen ? 'Hide prompt library' : 'Show prompt library'}
+            >
+              {sidebarOpen
+                ? <PanelLeftClose className="h-4 w-4" />
+                : <PanelLeftOpen className="h-4 w-4" />
+              }
+            </Button>
+          </div>
+
+          {/* Center: New Chat (always visible) */}
+          <div className="flex-1 flex justify-center md:flex-none">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1.5 rounded-md px-2.5 text-xs text-muted-foreground hover:text-foreground"
+              onClick={handleNewChat}
+              disabled={isLoading}
+              title="Start a new chat"
+            >
+              <SquarePen className="h-3.5 w-3.5" />
+              New Chat
+            </Button>
+          </div>
+
+          {/* Right: skills panel toggle (desktop only) */}
+          <div className="hidden md:block">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 rounded-md text-muted-foreground hover:text-foreground"
+              onClick={() => setSkillsPanelOpen((v) => !v)}
+              title={skillsPanelOpen ? 'Hide skills' : 'Show skills'}
+            >
+              {skillsPanelOpen
+                ? <PanelRightClose className="h-4 w-4" />
+                : <PanelRightOpen className="h-4 w-4" />
+              }
+            </Button>
+          </div>
         </div>
 
-        {/* New Chat button — centered at top */}
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 gap-1.5 rounded-md px-2.5 text-xs text-muted-foreground hover:text-foreground"
-            onClick={handleNewChat}
-            disabled={isLoading}
-            title="Start a new chat"
-          >
-            <SquarePen className="h-3.5 w-3.5" />
-            New Chat
-          </Button>
-        </div>
-
-        {/* Toggle right skills panel button */}
-        <div className="absolute top-3 right-3 z-10">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 rounded-md text-muted-foreground hover:text-foreground"
-            onClick={() => setSkillsPanelOpen((v) => !v)}
-            title={skillsPanelOpen ? 'Hide skills' : 'Show skills'}
-          >
-            {skillsPanelOpen
-              ? <PanelRightClose className="h-4 w-4" />
-              : <PanelRightOpen className="h-4 w-4" />
-            }
-          </Button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-4 py-6">
+        <div className="flex-1 overflow-y-auto px-3 sm:px-4 py-4">
           <div className="max-w-3xl mx-auto">
             {hasMoreHistory && (
               <div className="text-center py-3 mb-4">
@@ -395,13 +399,13 @@ export function ChatInterface({
 
         {/* Suggested prompts — only show if few messages */}
         {!isLoading && suggestedPrompts.length > 0 && messages.length <= 2 && (
-          <div className="px-4 pb-2">
-            <div className="max-w-3xl mx-auto flex flex-wrap gap-2">
+          <div className="px-3 sm:px-4 pb-2">
+            <div className="max-w-3xl mx-auto flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
               {suggestedPrompts.map((prompt) => (
                 <button
                   key={prompt}
                   onClick={() => sendMessage(prompt)}
-                  className="flex items-center gap-1.5 rounded-full border bg-background px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:border-primary/50 hover:bg-primary/5 transition-colors"
+                  className="flex items-center gap-1.5 rounded-full border bg-background px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:border-primary/50 hover:bg-primary/5 transition-colors shrink-0 whitespace-nowrap"
                 >
                   <Sparkles className="h-3 w-3" />
                   {prompt}
@@ -411,7 +415,7 @@ export function ChatInterface({
           </div>
         )}
 
-        <div className="border-t bg-background px-4 py-3">
+        <div className="border-t bg-background px-3 sm:px-4 py-3">
           <div className="max-w-3xl mx-auto">
             <div className="flex items-end gap-2 rounded-xl border bg-background shadow-sm focus-within:ring-2 focus-within:ring-primary/20 px-3 py-2">
               <Textarea
@@ -421,7 +425,7 @@ export function ChatInterface({
                 onKeyDown={handleKeyDown}
                 placeholder={
                   isOnboardingCompleted
-                    ? "Ask Vibe anything — use prompts or skills from the sidebars"
+                    ? "Ask Vibe anything..."
                     : `Stage ${currentStage}: ${getStageHint(currentStage)}`
                 }
                 className="min-h-[40px] max-h-[160px] resize-none border-0 shadow-none focus-visible:ring-0 p-0 text-sm"
@@ -437,17 +441,17 @@ export function ChatInterface({
                 {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               </Button>
             </div>
-            <p className="text-[10px] text-muted-foreground text-center mt-2">
+            <p className="hidden sm:block text-[10px] text-muted-foreground text-center mt-2">
               Shift+Enter for new line · Enter to send · Vibe uses Perplexity, Firecrawl & DataForSEO for real-time research
             </p>
           </div>
         </div>
       </div>
 
-      {/* ── Right sidebar: Skills Panel ── */}
+      {/* ── Right sidebar: Skills Panel (desktop only) ── */}
       <div
         className={cn(
-          'flex-shrink-0 border-l bg-background transition-all duration-200 overflow-hidden',
+          'hidden md:block flex-shrink-0 border-l bg-background transition-all duration-200 overflow-hidden',
           skillsPanelOpen ? 'w-80' : 'w-0'
         )}
       >
