@@ -7,7 +7,7 @@ import { MessageBubble, Message } from './message-bubble'
 import { OnboardingProgress } from './onboarding-progress'
 import { ToolActivity } from './tool-activity-card'
 import { ToolName } from '@/lib/tools/tool-definitions'
-import { Send, Loader2, Sparkles, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen } from 'lucide-react'
+import { Send, Loader2, Sparkles, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, SquarePen } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PromptLibrary } from './prompt-library'
 import { SkillsPanel } from './skills-panel'
@@ -277,6 +277,23 @@ export function ChatInterface({
     setTimeout(() => textareaRef.current?.focus(), 50)
   }, [])
 
+  // Start a fresh conversation — reset messages to the welcome state
+  const handleNewChat = useCallback(() => {
+    if (isLoading) return
+    const welcomeContent = isOnboardingCompleted
+      ? `Welcome back! Your marketing foundation is fully set up for **${clientName}**.\n\nI'm ready to help with anything — writing content, researching trends, refining strategy, or building new campaigns.\n\n**What would you like to work on today?**`
+      : `Welcome to Vibe Agent! I'm Vibe, your AI marketing strategist.\n\nI'm going to help build **${clientName}'s** complete marketing foundation — from brand voice to positioning to a full content calendar.\n\nWe'll work through 5 stages together. I'll research your market, analyze competitors, and create everything you need. You approve each stage before we move on.\n\n**Ready to start? Tell me a bit about your business** — what do you do, who do you serve, and what's your main goal right now?`
+
+    setMessages([{
+      id: `welcome-${Date.now()}`,
+      role: 'assistant',
+      content: welcomeContent,
+      toolActivities: [],
+      timestamp: new Date(),
+    }])
+    setInput('')
+  }, [isLoading, isOnboardingCompleted, clientName])
+
   // Show history loading state
   if (isLoadingHistory) {
     return (
@@ -326,6 +343,21 @@ export function ChatInterface({
               ? <PanelLeftClose className="h-4 w-4" />
               : <PanelLeftOpen className="h-4 w-4" />
             }
+          </Button>
+        </div>
+
+        {/* New Chat button — centered at top */}
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1.5 rounded-md px-2.5 text-xs text-muted-foreground hover:text-foreground"
+            onClick={handleNewChat}
+            disabled={isLoading}
+            title="Start a new chat"
+          >
+            <SquarePen className="h-3.5 w-3.5" />
+            New Chat
           </Button>
         </div>
 
