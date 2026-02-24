@@ -1,8 +1,10 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Skills Library — structured data for all marketing skills
 //
-// Data sourced from /skills/**/*.md files. Update this file when skills change.
-// Used by the Skills Panel (right sidebar) in the Chat interface.
+// Source of truth: /skills/**/*.md files (loaded into system prompt at runtime)
+// This file provides UI metadata + activation prompts for the Skills Panel sidebar.
+// The full skill methodology is already in Claude's system prompt — primaryPrompt
+// strings here are activation triggers, not instructions. Keep them short and direct.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type SkillCategoryId = 'strategy' | 'copy' | 'creative'
@@ -51,7 +53,7 @@ export const SKILLS_LIBRARY: SkillCategory[] = [
         outputs: 'content_ideas',
         prerequisites: [],
         skillStack: 'Any',
-        primaryPrompt: 'Run the Orchestrator skill. Ask me about my marketing goal, business type, and what assets already exist, then recommend the right skill stack and execution sequence for this client.',
+        primaryPrompt: 'Run the Orchestrator skill now. Use the full Orchestrator methodology from your skill library — ask about my marketing goal and existing assets, then map out the correct skill stack and execution sequence for this client.',
       },
       {
         id: 'brand-voice',
@@ -67,7 +69,7 @@ export const SKILLS_LIBRARY: SkillCategory[] = [
         outputs: 'brand_voices',
         prerequisites: [],
         skillStack: 'Foundation',
-        primaryPrompt: 'Run the Brand Voice skill for this client. Research their industry, ask me about their personality, values, and communication style, then create a complete brand voice profile with tone guide, vocabulary list, dos and don\'ts, and writing rules. Save to Supabase.',
+        primaryPrompt: 'Run the Brand Voice skill now using the full Brand Voice methodology from your skill library. Research this client\'s industry and existing content, ask the guided discovery questions, build the complete voice profile across all 5 dimensions, and save the finished record to Supabase brand_voices.',
       },
       {
         id: 'positioning-angles',
@@ -83,7 +85,7 @@ export const SKILLS_LIBRARY: SkillCategory[] = [
         outputs: 'positioning_angles',
         prerequisites: ['brand-voice'],
         skillStack: 'Foundation',
-        primaryPrompt: 'Run the Positioning Angles skill. Research the competitive landscape with Perplexity and Firecrawl, identify the 3-5 strongest positioning angles available to this client, and build out the hooks, messaging frameworks, and psychological triggers for each. Save to Supabase.',
+        primaryPrompt: 'Run the Positioning Angles skill now using the full Positioning Angles methodology from your skill library. Research the competitive landscape with Perplexity and Firecrawl, apply the 8 positioning frameworks to find the 3-5 strongest angles for this client, evaluate each against the quality gates, and save each angle as a separate record to Supabase positioning_angles.',
       },
       {
         id: 'keyword-research',
@@ -99,7 +101,7 @@ export const SKILLS_LIBRARY: SkillCategory[] = [
         outputs: 'keyword_research, content_calendar',
         prerequisites: ['positioning-angles'],
         skillStack: 'Traffic',
-        primaryPrompt: 'Run the Keyword Research skill using DataForSEO. Find the top 50 keyword opportunities for this client — a mix of high-volume informational, commercial intent, and local keywords. Identify quick wins (low difficulty, decent volume). Save all to Supabase keyword_research table.',
+        primaryPrompt: 'Run the Keyword Research skill now using the full 6 Circles methodology from your skill library. Use DataForSEO to find the top 50 keyword opportunities — high-priority gaps, unserved questions, and blue ocean terms. Build 3-5 content pillars and identify quick wins. Save all to Supabase keyword_research.',
       },
       {
         id: 'lead-magnet',
@@ -116,7 +118,7 @@ export const SKILLS_LIBRARY: SkillCategory[] = [
         outputs: 'lead_magnets',
         prerequisites: ['positioning-angles', 'brand-voice'],
         skillStack: 'Conversion',
-        primaryPrompt: 'Run the Lead Magnet skill. Research what lead magnets convert best in this client\'s industry, then create the 3 strongest lead magnet concepts with titles, outlines, and opt-in page copy. We\'ll pick the winner together. Save to Supabase.',
+        primaryPrompt: 'Run the Lead Magnet skill now using the full Lead Magnet methodology from your skill library. Research what converts best in this niche, apply the 5 lead magnet frameworks, create 3 strong concepts with titles, full outlines, and opt-in copy. Present options for selection, then save the chosen concept to Supabase lead_magnets.',
       },
     ],
   },
@@ -145,7 +147,7 @@ export const SKILLS_LIBRARY: SkillCategory[] = [
         outputs: 'content_ideas, blog_posts',
         prerequisites: ['positioning-angles', 'brand-voice'],
         skillStack: 'Conversion',
-        primaryPrompt: 'Run the Direct Response Copy skill. Write a complete high-converting landing page using proven frameworks — headline, subheadline, above-the-fold hook, benefits section, social proof, objection handling, and CTA. Strip all AI artifacts. Save to Supabase.',
+        primaryPrompt: 'Run the Direct Response Copy skill now using the full methodology from your skill library. Apply the correct framework for this client\'s market sophistication level, write the complete 8-section page architecture, run the AI artifact removal checklist, and save the finished copy to Supabase.',
       },
       {
         id: 'email-sequences',
@@ -162,7 +164,7 @@ export const SKILLS_LIBRARY: SkillCategory[] = [
         outputs: 'email_sequences, emails',
         prerequisites: ['brand-voice', 'positioning-angles'],
         skillStack: 'Nurture',
-        primaryPrompt: 'Run the Email Sequences skill. Write a complete 7-email welcome sequence. Each email has a clear role: (1) Welcome + quick win, (2) Our story, (3) Core value delivery, (4) Social proof + case study, (5) Objection handling, (6) Main offer, (7) Long-term nurture. Save sequence and all emails to Supabase.',
+        primaryPrompt: 'Run the Email Sequences skill now using the full methodology from your skill library. Apply the DELIVER→CONNECT→VALUE→VALUE→BRIDGE→SOFT→DIRECT framework, write all 7 emails with one job and one CTA each, save the sequence record first then each email individually to Supabase — sequence_id required before saving emails.',
       },
       {
         id: 'newsletter',
@@ -178,7 +180,7 @@ export const SKILLS_LIBRARY: SkillCategory[] = [
         outputs: 'email_sequences, emails',
         prerequisites: ['brand-voice'],
         skillStack: 'Nurture',
-        primaryPrompt: 'Run the Newsletter skill. Research 3-5 relevant industry news items with Perplexity, add the client\'s expert insight on each, include one actionable tip, and end with a soft CTA. Use one of the 9 newsletter formats. Keep it under 400 words. Save to Supabase.',
+        primaryPrompt: 'Run the Newsletter skill now using the full methodology from your skill library. Select the right format from the 9 newsletter formats, research current industry news with Perplexity, add the client\'s expert angle, write the complete newsletter under 400 words, and save to Supabase email_sequences and emails.',
       },
       {
         id: 'seo-content',
@@ -195,7 +197,7 @@ export const SKILLS_LIBRARY: SkillCategory[] = [
         outputs: 'blog_posts, keyword_research',
         prerequisites: ['keyword-research', 'brand-voice'],
         skillStack: 'Traffic',
-        primaryPrompt: 'Run the SEO Content skill. Pick the best keyword opportunity from our research and write a complete 1500-2000 word SEO-optimised blog post with H2/H3 structure, meta description, internal linking suggestions, and a clear CTA. Remove all AI artifacts. Save to Supabase.',
+        primaryPrompt: 'Run the SEO Content skill now using the full methodology from your skill library. Audit the top-ranking competitor content for this keyword, match search intent to the right content format, write the complete 1500-2000 word post using the opening/body/closing formulas, pass all quality gates, and save to Supabase blog_posts.',
       },
       {
         id: 'content-atomizer',
@@ -211,7 +213,7 @@ export const SKILLS_LIBRARY: SkillCategory[] = [
         outputs: 'social_posts',
         prerequisites: ['brand-voice'],
         skillStack: 'Traffic',
-        primaryPrompt: 'Run the Content Atomizer skill. Take the most recent piece of core content for this client (blog post, idea, or email) and transform it into 15+ platform-specific assets: LinkedIn posts, Twitter/X threads, Instagram captions, Facebook posts, and TikTok scripts. Each piece native to its platform. Save all to Supabase.',
+        primaryPrompt: 'Run the Content Atomizer skill now using the full atomization matrix from your skill library. Identify or ask for the core content piece, then produce all 15+ platform-native assets — LinkedIn (4), Twitter/X (3), Instagram (3), Email (2), Video (2), plus bonus graphics. Each piece native to its platform. Save all to Supabase social_posts.',
       },
       {
         id: 'landing-pages',
@@ -228,7 +230,7 @@ export const SKILLS_LIBRARY: SkillCategory[] = [
         outputs: 'blog_posts',
         prerequisites: ['brand-voice', 'positioning-angles'],
         skillStack: 'Conversion',
-        primaryPrompt: 'Run the Landing Pages skill. Create a complete SEO landing page for this client\'s main service. Include optimized headline, service description, benefits, social proof, FAQs, and a strong CTA. Balance conversion copy with search intent. Save to Supabase.',
+        primaryPrompt: 'Run the Landing Pages skill now using the full methodology from your skill library. Ask which page type is needed (SEO, programmatic, or campaign), apply the correct page architecture and copy framework for that type, include all required sections, and save to Supabase landing_pages.',
       },
     ],
   },
@@ -257,7 +259,7 @@ export const SKILLS_LIBRARY: SkillCategory[] = [
         outputs: 'creative_briefs',
         prerequisites: ['brand-voice', 'positioning-angles'],
         skillStack: 'Any',
-        primaryPrompt: 'Run the AI Creative Strategist skill. Research the market, analyse top-performing ads in this niche, and produce a full creative strategy brief — big idea, messaging angle, visual direction, platform strategy, and 4-week rollout plan. Save to Supabase creative_briefs.',
+        primaryPrompt: 'Run the AI Creative Strategist skill now using the full methodology from your skill library. Audit the competitive creative landscape, define the creative strategy, produce 3-5 distinct concepts each with platform, format, hook, visual direction, and ready-to-use Facebook ad copy (primary_text, headline, description with character limits enforced), then save the complete brief to Supabase creative_briefs.',
       },
       {
         id: 'ai-product-photo',
@@ -274,7 +276,7 @@ export const SKILLS_LIBRARY: SkillCategory[] = [
         outputs: 'media_assets',
         prerequisites: ['ai-creative-strategist'],
         skillStack: 'Any',
-        primaryPrompt: 'Run the AI Product Photo skill. Generate a set of 10 professional product photography prompts for this client\'s main product/service. Vary the style: studio, lifestyle, hero shot, detail shot. Each prompt ready to use in Midjourney or DALL-E.',
+        primaryPrompt: 'Run the AI Product Photo skill now using the full methodology from your skill library. Define the shot list across hero, lifestyle, detail, and scale shot types, generate the complete set of AI-ready prompts with platform dimension specs, and save all assets and briefs to Supabase media_assets.',
       },
       {
         id: 'ai-product-video',
@@ -291,7 +293,7 @@ export const SKILLS_LIBRARY: SkillCategory[] = [
         outputs: 'media_assets',
         prerequisites: ['ai-creative-strategist'],
         skillStack: 'Any',
-        primaryPrompt: 'Run the AI Product Video skill. Create a product video concept for this client\'s main product. Include shot list, script, motion direction, and platform-specific format recommendations. Save to Supabase media_assets.',
+        primaryPrompt: 'Run the AI Product Video skill now using the full methodology from your skill library. Select the right video type for this campaign, write the complete script with timing markers and visual direction, specify platform aspect ratios and duration variants, and save to Supabase media_assets.',
       },
       {
         id: 'ai-social-graphics',
@@ -307,7 +309,7 @@ export const SKILLS_LIBRARY: SkillCategory[] = [
         outputs: 'media_assets',
         prerequisites: ['ai-creative-strategist'],
         skillStack: 'Any',
-        primaryPrompt: 'Run the AI Social Graphics skill. Create platform-optimised visual content briefs for LinkedIn graphics, Instagram carousel slides, and a quote card. Include exact dimensions, copy, visual direction, and colour specs. Save creative briefs to Supabase.',
+        primaryPrompt: 'Run the AI Social Graphics skill now using the full methodology from your skill library. Produce platform-optimised visual briefs across all required formats — carousel structure, quote cards, thumbnails — with exact dimensions, copy, and colour specs for each. Save to Supabase media_assets.',
       },
       {
         id: 'ai-talking-head',
@@ -323,7 +325,7 @@ export const SKILLS_LIBRARY: SkillCategory[] = [
         outputs: 'media_assets',
         prerequisites: [],
         skillStack: 'Any',
-        primaryPrompt: 'Run the AI Talking Head skill. Write a 60-90 second talking head video script for this client. Hook in first 3 seconds, clear value delivery, strong CTA at the end. Formatted with cues for pacing and emphasis. Save to Supabase.',
+        primaryPrompt: 'Run the AI Talking Head skill now using the full methodology from your skill library. Select the right video style for this use case, write the complete 60-90 second script with hook, value delivery, and CTA, add pacing and emphasis cues, and save to Supabase media_assets.',
       },
       {
         id: 'frontend-design',
@@ -340,7 +342,7 @@ export const SKILLS_LIBRARY: SkillCategory[] = [
         outputs: 'Supabase Storage (documents)',
         prerequisites: ['direct-response-copy'],
         skillStack: 'Conversion',
-        primaryPrompt: 'Run the Frontend Design skill. Take the approved landing page copy and turn it into a production-grade HTML/CSS page. Clean layout, no AI artifact design patterns, mobile responsive, fast loading. Save the HTML file to Supabase Storage documents bucket.',
+        primaryPrompt: 'Run the Frontend Design skill now using the full methodology from your skill library. Retrieve the approved copy, establish the design system (colors, typography, spacing), build the complete production-grade HTML/CSS page responsive at all four breakpoints, and save to Supabase Storage documents bucket.',
       },
       {
         id: 'dtc-ads',
@@ -358,7 +360,7 @@ export const SKILLS_LIBRARY: SkillCategory[] = [
         outputs: 'creative_briefs',
         prerequisites: ['brand-voice'],
         skillStack: 'Any',
-        primaryPrompt: 'Run the DTC Ad Creative skill. Research top-performing ads in this niche, then create 5 complete ad concepts for Meta/Instagram. For each: hook, primary text, headline, description, and visual direction. Include a mix of angles: fear-based, desire-based, curiosity-based, social proof, and direct offer. Save to Supabase.',
+        primaryPrompt: 'Run the DTC Ad Creative skill now using the full DTC Ads methodology from your skill library. Research competitor ads with Perplexity, apply the 4 conversion levers and 6 hook archetypes, produce 5 complete concepts across the required formats (static, carousel, ugc_video, short_video, story) each with platform, hook, visual direction, primary_text (max 125 chars), headline (max 27 chars), and description (max 27 chars). Save the complete brief to Supabase creative_briefs.',
       },
       {
         id: 'interactive-lead-magnets',
@@ -374,7 +376,7 @@ export const SKILLS_LIBRARY: SkillCategory[] = [
         outputs: 'lead_magnets (HTML to Storage)',
         prerequisites: ['lead-magnet'],
         skillStack: 'Conversion',
-        primaryPrompt: 'Create an interactive quiz for this client\'s lead magnet. First get the existing lead magnet details, then generate a self-contained HTML quiz with 5-10 questions, result outcomes, progress bar, and lead capture form. Use brand colors and mobile-first design. Save both the interactive tool and opt-in page.',
+        primaryPrompt: 'Run the Interactive Lead Magnets skill now using the full methodology from your skill library. Call get_existing_content(\'lead_magnets\') first to get the leadMagnetId, then build both the interactive HTML tool and the opt-in landing page — 100% self-contained, zero external CDN links, mobile-first at 375px — and save both via save_lead_magnet_html().',
       },
     ],
   },

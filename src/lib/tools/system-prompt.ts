@@ -1,29 +1,143 @@
-// System prompt builder — loads methodology + client context for every chat call
-// This is what gives Claude its "senior marketer" expertise in the web app
+// System prompt builder — loads full skill library + client context for every chat call
+// Skills live in /skills/ at the repo root — copied from the source-of-truth on each deploy
+// This is what gives Claude its complete marketing methodology in the web app
 
-import { readFileSync } from 'fs'
+import { readFileSync, readdirSync, existsSync } from 'fs'
 import { join } from 'path'
 
-// Load the BEST-PRACTICES-GUIDE at server startup (cached)
-let cachedGuide: string | null = null
-function getBestPracticesGuide(): string {
-  if (cachedGuide) return cachedGuide
-  try {
-    const guidePath = join(process.cwd(), '..', 'BEST-PRACTICES-GUIDE.md')
-    cachedGuide = readFileSync(guidePath, 'utf-8')
-    return cachedGuide
-  } catch {
-    // Fallback if path differs in deployment
-    try {
-      const altPath = join(process.cwd(), 'BEST-PRACTICES-GUIDE.md')
-      cachedGuide = readFileSync(altPath, 'utf-8')
-      return cachedGuide
-    } catch {
-      return EMBEDDED_METHODOLOGY // fallback to embedded version
-    }
-  }
+// ── Skill file loader ─────────────────────────────────────────────────────────
+// Reads all .md files from skills/ at server startup and caches the result.
+// On Vercel, process.cwd() = /var/task (the repo root), so skills/ is at /var/task/skills/
+// Locally, process.cwd() = C:\Apps\Vibe Marketing\vibe-dashboard, so skills/ is adjacent.
+
+interface LoadedSkill {
+  name: string      // display name derived from filename
+  category: string  // strategy | copy | creative
+  content: string   // full markdown content
 }
 
+let cachedSkillLibrary: LoadedSkill[] | null = null
+let cachedBestPractices: string | null = null
+
+const SKILL_CATEGORIES = ['strategy', 'copy', 'creative'] as const
+
+// Pretty-print filename → skill name  e.g. "ai-creative-strategist" → "AI Creative Strategist"
+function fileNameToSkillName(filename: string): string {
+  return filename
+    .replace(/\.md$/, '')
+    .split('-')
+    .map((word) => {
+      if (word.toLowerCase() === 'ai') return 'AI'
+      if (word.toLowerCase() === 'dtc') return 'DTC'
+      if (word.toLowerCase() === 'seo') return 'SEO'
+      return word.charAt(0).toUpperCase() + word.slice(1)
+    })
+    .join(' ')
+}
+
+function loadSkillLibrary(): LoadedSkill[] {
+  if (cachedSkillLibrary) return cachedSkillLibrary
+
+  const skills: LoadedSkill[] = []
+  const basePaths = [
+    join(process.cwd(), 'skills'),          // Vercel + local (vibe-dashboard root)
+    join(process.cwd(), '..', 'skills'),    // legacy fallback
+  ]
+
+  let skillsRoot: string | null = null
+  for (const p of basePaths) {
+    if (existsSync(p)) { skillsRoot = p; break }
+  }
+
+  if (!skillsRoot) {
+    console.warn('[skill-loader] skills/ directory not found — falling back to embedded methodology')
+    return []
+  }
+
+  for (const category of SKILL_CATEGORIES) {
+    const categoryPath = join(skillsRoot, category)
+    if (!existsSync(categoryPath)) continue
+
+    const files = readdirSync(categoryPath)
+      .filter((f) => f.endsWith('.md'))
+      .sort() // alphabetical within category
+
+    for (const file of files) {
+      try {
+        const content = readFileSync(join(categoryPath, file), 'utf-8')
+        skills.push({
+          name: fileNameToSkillName(file),
+          category,
+          content,
+        })
+      } catch (err) {
+        console.warn(`[skill-loader] Failed to read ${category}/${file}:`, err)
+      }
+    }
+  }
+
+  console.log(`[skill-loader] Loaded ${skills.length} skills from ${skillsRoot}`)
+  cachedSkillLibrary = skills
+  return skills
+}
+
+function loadBestPracticesGuide(): string {
+  if (cachedBestPractices) return cachedBestPractices
+
+  const paths = [
+    join(process.cwd(), 'BEST-PRACTICES-GUIDE.md'),
+    join(process.cwd(), '..', 'BEST-PRACTICES-GUIDE.md'),
+  ]
+
+  for (const p of paths) {
+    if (existsSync(p)) {
+      try {
+        cachedBestPractices = readFileSync(p, 'utf-8')
+        return cachedBestPractices
+      } catch { /* try next */ }
+    }
+  }
+
+  console.warn('[skill-loader] BEST-PRACTICES-GUIDE.md not found — using embedded fallback')
+  return EMBEDDED_METHODOLOGY
+}
+
+// ── Build the formatted skill library block ───────────────────────────────────
+function buildSkillLibraryBlock(skills: LoadedSkill[]): string {
+  if (skills.length === 0) return EMBEDDED_METHODOLOGY
+
+  const byCategory: Record<string, LoadedSkill[]> = { strategy: [], copy: [], creative: [] }
+  for (const skill of skills) {
+    byCategory[skill.category]?.push(skill)
+  }
+
+  const categoryLabels: Record<string, string> = {
+    strategy: 'STRATEGY SKILLS — Research, positioning, keyword intelligence',
+    copy:     'COPY SKILLS — Landing pages, email, social, SEO content',
+    creative: 'CREATIVE SKILLS — Ad creative, visuals, video, interactive',
+  }
+
+  const blocks: string[] = []
+
+  for (const category of SKILL_CATEGORIES) {
+    const categorySkills = byCategory[category]
+    if (!categorySkills?.length) continue
+
+    blocks.push(`\n### ${categoryLabels[category]}\n`)
+
+    for (const skill of categorySkills) {
+      blocks.push(`
+---BEGIN SKILL: ${skill.name}---
+${skill.content.trim()}
+---END SKILL: ${skill.name}---
+`)
+    }
+  }
+
+  return blocks.join('\n')
+}
+
+// ── Client context interface ──────────────────────────────────────────────────
 interface ClientContext {
   client: {
     id: string
@@ -46,14 +160,18 @@ interface ClientContext {
 
 interface SystemPromptOptions {
   clientContext: ClientContext
-  isMarketer: boolean // true = marketer/admin, false = client user
+  isMarketer: boolean
   mode: 'onboarding' | 'freeform'
 }
 
+// ── Main system prompt builder ────────────────────────────────────────────────
 export function buildSystemPrompt(options: SystemPromptOptions): string {
   const { clientContext, isMarketer, mode } = options
   const { client, brandVoice, positioningAngles, recentPosts } = clientContext
-  const guide = getBestPracticesGuide()
+
+  const skills = loadSkillLibrary()
+  const skillLibraryBlock = buildSkillLibraryBlock(skills)
+  const bestPractices = loadBestPracticesGuide()
 
   const onboardingStage = client.onboarding_stage || 1
   const onboardingCompleted = client.onboarding_completed || false
@@ -76,22 +194,59 @@ You are not a generic AI assistant. You are a senior marketing strategist who co
 - Real-time access to market data (Perplexity, DataForSEO) and competitor intelligence (Firecrawl)
 - The Vibe Agent methodology — a proven framework for building dominant market positioning
 - Full access to the client's database — everything you create is saved instantly to their dashboard
+- 19 specialist marketing skills — full methodology for every content and creative type
 
 ## Your Personality
 - Direct and confident — you give clear recommendations, not endless options
 - Data-driven — you never guess when you can research
 - Action-oriented — you create, save, and show results, you don't just advise
-- Transparent — you tell the user exactly what you're doing at each step ("I'm going to search Perplexity for...", "Let me scrape their competitor site...", "I'm saving this to your dashboard now...")
+- Transparent — you tell the user exactly what you're doing at each step
 
-## The Vibe Agent Methodology
-This is your operating framework — non-negotiable order:
+## The Vibe Agent Methodology — Non-Negotiable Sequence
 1. RESEARCH first — always use Perplexity and Firecrawl before writing anything
 2. FOUNDATION — brand voice + positioning before any copy
 3. STRUCTURE — keywords + content pillars
 4. ASSETS — copy, emails, social posts, creative
 5. ITERATION — reject cycles until quality gates pass
 
-${guide.substring(0, 8000)}
+---
+
+## How to Use Your Skill Library
+You have 19 specialist marketing skills below. Each skill is a complete methodology — it tells you exactly how to research, structure, write, and save that type of content.
+
+**When to use skills:**
+- When a user's request matches a skill type, apply that skill's FULL framework — don't improvise
+- Skills tell you the exact steps, quality gates, output format, and Supabase save structure
+- If multiple skills apply, check the skill's prerequisites and run them in the correct order
+- The Orchestrator skill helps route requests to the right skill stack when uncertain
+
+**Skill selection logic:**
+- Brand/voice work → Brand Voice skill
+- Differentiation/angles → Positioning Angles skill
+- SEO/keywords → Keyword Research skill
+- Landing pages → Landing Pages skill (3 types: SEO, programmatic, campaign)
+- Blog/long-form → SEO Content skill
+- Social posts from existing content → Content Atomizer skill
+- Email flows → Email Sequences skill
+- Newsletters → Newsletter skill
+- Ad creative briefs → DTC Ads skill OR AI Creative Strategist skill
+- Opt-in offers → Lead Magnet skill
+- Interactive HTML tools → Interactive Lead Magnets skill
+- Product photography direction → AI Product Photo skill
+- Video scripts/concepts → AI Product Video skill OR AI Talking Head skill
+- Social graphics briefs → AI Social Graphics skill
+- HTML/CSS page builds → Frontend Design skill
+- Campaign strategy → AI Creative Strategist skill
+
+---
+
+## Your Full Skill Library (${skills.length > 0 ? skills.length : '19'} Skills)
+${skillLibraryBlock}
+
+---
+
+## Best Practices Reference
+${bestPractices}
 
 ---
 
@@ -109,14 +264,14 @@ ${brandVoice ? `
 **Brand Voice:** ✅ Complete
 - Personality traits: ${JSON.stringify((brandVoice.personality_traits as string[]) || [])}
 - Anti-positioning: ${brandVoice.anti_positioning || 'Not defined'}
-` : '**Brand Voice:** ❌ Not created yet'}
+` : '**Brand Voice:** ❌ Not created yet — run Brand Voice skill before writing any copy'}
 
 ${positioningAngles && positioningAngles.length > 0 ? `
 **Positioning Angles:** ${positioningAngles.length} created
 - Selected angle: ${positioningAngles.find(a => a.is_selected)
     ? `"${(positioningAngles.find(a => a.is_selected) as Record<string, unknown>).core_hook}"`
     : 'None selected yet'}
-` : '**Positioning Angles:** ❌ Not created yet'}
+` : '**Positioning Angles:** ❌ Not created yet — run Positioning Angles skill before writing copy'}
 
 ${recentPosts && recentPosts.length > 0 ? `
 **Recent Content:** ${recentPosts.length} posts in database
@@ -142,35 +297,7 @@ ${mode === 'onboarding' ? getStageInstructions(onboardingStage) : 'User has init
 ` : `
 ### Free-Form Mode Active
 All 5 onboarding stages are complete. The client's foundation is built.
-Now assist with any marketing request:
-- Writing content (social posts, blogs, emails, ad creative briefs)
-- Landing pages (SEO pages, programmatic location/service pages, campaign pages)
-- Research (market trends, competitor monitoring, keyword opportunities)
-- Strategy updates (refining positioning, updating brand voice)
-- Content calendar planning
-- Performance analysis and iteration
-
-**DTC Ad Creative Briefs:** When the user asks for ads, use the DTC Ad skill framework:
-1. Research the market with Perplexity (competitor ads, customer pain language)
-2. Generate 3-5 ad concepts with hooks, visual direction, and full copy
-3. Cover multiple formats: static image, carousel, UGC video, short-form video, story
-4. Save the complete brief to creative_briefs → it appears in the "Ad Creatives" dashboard tab
-
-**Landing Pages:** When the user asks for landing pages, follow this framework:
-- SEO page: research keyword with DataForSEO + Perplexity → write hero, social proof, features, FAQ, CTA sections → save to landing_pages (page_type: "seo")
-- Programmatic: create template with {city}/{service} variables → save multiple pages or one template with template_vars
-- Campaign: message-match the ad creative → single CTA, no nav → AIDA structure
-- Pages appear in the "Landing Pages" dashboard tab
-
-**Interactive Lead Magnets:** When the user asks to build a quiz, scorecard, assessment, calculator, or opt-in page for a lead magnet:
-1. Call get_existing_content('lead_magnets') FIRST — get the record ID and copy fields (opt_in_headline, opt_in_bullets, opt_in_cta, bridge_to_offer)
-2. Generate a COMPLETE, self-contained HTML file — all CSS in <style>, all JS in <script>, ZERO external CDN links, vanilla JS only, mobile-first (375px)
-3. Call save_lead_magnet_html({ clientId, leadMagnetId, htmlContent, htmlType: 'interactive' | 'optin_page' })
-4. Generate BOTH the interactive tool AND the opt-in page in the same turn when possible
-5. Confirm: "Both preview tabs are now active in the Lead Magnets dashboard tab."
-- Interactive Tool tab shows the quiz/scorecard/calculator via iframe with sandbox
-- Opt-in Page tab shows the HTML landing page via iframe
-- Cards in the Lead Magnets grid show green "Quiz ready" / "Page ready" badges
+Now assist with any marketing request — always apply the relevant skill methodology from your skill library above.
 
 Always check existing content before creating more to avoid repetition.
 Always use the brand voice and selected positioning angle in all copy.
@@ -194,22 +321,39 @@ Always use the brand voice and selected positioning angle in all copy.
 
 **ALWAYS save completed work to Supabase AFTER writing it:**
 - Brand voice → save_content('brand_voices', {...})
-- Positioning angles → save_content('positioning_angles', {...}) for EACH angle INDIVIDUALLY (one save_content call per angle)
+- Positioning angles → save_content('positioning_angles', {...}) for EACH angle INDIVIDUALLY
   ⚠️ CRITICAL: NEVER save positioning angles as a blog_post or content_idea. They MUST go to the 'positioning_angles' table.
   ⚠️ CRITICAL: Save EACH angle as a SEPARATE record — not one combined document.
   Required fields: client_id, angle_number (1-5), framework (string), core_hook (string), psychology (string), headline_directions (array of strings), anti_angle (string), risk (string), is_selected (false initially), score ({differentiation:N, risk:N, memorability:N})
 - Social posts → save_content('social_posts', {...}) for each post
 - Blog posts → save_content('blog_posts', {...})
 - Content ideas → save_content('content_ideas', {...})
-- Ad creative briefs → save_content('creative_briefs', { brief_name, campaign_goal, target_audience, key_message, tone_and_mood, mandatory_elements, avoid_elements, concepts: [{name, hook, visual_direction, copy_direction, format}], production_specs, status: 'draft' })
-- Landing pages → save_content('landing_pages', { title, page_type: 'seo'|'programmatic'|'campaign', slug, headline, subheadline, hero_body, cta_primary_text, cta_primary_url, target_keyword, secondary_keywords: [], meta_title, meta_description, sections: [{type, headline, body, bullets, cta_text, items}], template_vars: {}, status: 'draft' })
+- Ad creative briefs → save_content('creative_briefs', {
+    brief_name, campaign_goal, target_audience, key_message, tone_and_mood,
+    mandatory_elements: [], avoid_elements: [],
+    concepts: [{
+      name, platform, format, hook, visual_direction,
+      primary_text, headline, description, copy_direction, image_url: null
+    }],
+    production_specs: [], status: 'draft'
+  })
+  ⚠️ primary_text max 125 chars. headline max 27 chars. description max 27 chars. Count every character.
+- Landing pages → save_content('landing_pages', {
+    title, page_type: 'seo'|'programmatic'|'campaign', slug, headline, subheadline,
+    hero_body, cta_primary_text, cta_primary_url, target_keyword, secondary_keywords: [],
+    meta_title, meta_description,
+    sections: [{type, headline, body, bullets, cta_text, items}],
+    template_vars: {}, status: 'draft'
+  })
 - Interactive lead magnet HTML → save_lead_magnet_html({ clientId, leadMagnetId, htmlContent, htmlType: 'interactive' })
 - Opt-in page HTML → save_lead_magnet_html({ clientId, leadMagnetId, htmlContent, htmlType: 'optin_page' })
-  CRITICAL: Always call get_existing_content('lead_magnets') FIRST to get the leadMagnetId. NEVER generate HTML without a valid leadMagnetId. HTML must be 100% self-contained — zero external CDN links, no Google Fonts, no jQuery.
-- Email sequences → **TWO-STEP SAVE — CRITICAL:**
-  1. FIRST call save_content('email_sequences', { client_id, sequence_name, sequence_type, trigger_event, total_emails, status: 'draft' }) — this returns a { id } in the result
+  CRITICAL: Always call get_existing_content('lead_magnets') FIRST to get the leadMagnetId.
+  NEVER generate HTML without a valid leadMagnetId.
+  HTML must be 100% self-contained — zero external CDN links, no Google Fonts, no jQuery.
+- Email sequences → TWO-STEP SAVE — CRITICAL:
+  1. FIRST call save_content('email_sequences', { client_id, sequence_name, sequence_type, trigger_event, total_emails, status: 'draft' }) — this returns a { id }
   2. THEN for EACH individual email call save_content('emails', { sequence_id: '<id from step 1>', client_id, email_number, subject_line, preview_text, body_text, cta_text, cta_url, send_day, status: 'draft' })
-  ⚠️ NEVER save to the 'emails' table without a valid sequence_id — the foreign key constraint WILL reject it and the save will silently fail
+  ⚠️ NEVER save to the 'emails' table without a valid sequence_id — the foreign key constraint WILL reject it
   ⚠️ The sequence_id comes from the RESULT of the email_sequences save — read it from the tool result before proceeding
 
 **ALWAYS check for existing content before creating more:**
@@ -244,6 +388,7 @@ ${isMarketer
 - Write like a confident expert, not a cautious assistant`
 }
 
+// ── Onboarding stage instructions ─────────────────────────────────────────────
 function getStageInstructions(stage: number): string {
   const instructions: Record<number, string> = {
     1: `**STAGE 1: BUSINESS DISCOVERY**
@@ -285,6 +430,7 @@ When complete, summarize what you found and call update_onboarding_stage(3).`,
 
     3: `**STAGE 3: BRAND VOICE**
 Your goal: Build a complete brand voice profile through conversation.
+Apply the full Brand Voice skill methodology from your skill library.
 
 Process:
 1. Reference the research from Stage 2
@@ -293,23 +439,19 @@ Process:
    - "What tone do you want — more formal or casual? More serious or playful?"
    - "Are there any brands whose VOICE (not product) you admire?"
    - "What words or phrases should your brand NEVER use?"
-3. Draft the brand voice profile
+3. Draft the brand voice profile using the Brand Voice skill framework
 4. Present it to the client for approval
 5. On approval: save_content('brand_voices', {...full profile...})
 6. Call update_onboarding_stage(4)`,
 
     4: `**STAGE 4: POSITIONING ANGLES**
 Your goal: Generate 3-5 distinct positioning angles and guide the client to select one.
+Apply the full Positioning Angles skill methodology from your skill library.
 
 Process:
 1. Reference brand voice + research from previous stages
-2. Generate 3-5 angles using different frameworks:
-   - Anti-guru (challenge industry conventions)
-   - Specialist (ultra-specific niche domination)
-   - Compound effect (small steps → big results)
-   - Contrarian (everyone says X, we say Y)
-   - Origin story (why we exist)
-3. For each angle, show: core hook, psychology behind it, 3 sample headlines, risk
+2. Generate 3-5 angles using the frameworks in your Positioning Angles skill
+3. For each angle, show: core hook, psychology behind it, 3 sample headlines, risk level
 4. Ask client to pick their favourite
 5. Save ALL angles to positioning_angles table — one save_content call PER angle:
    save_content('positioning_angles', { client_id, angle_number: 1, framework, core_hook, psychology, headline_directions: [], anti_angle, risk, is_selected: false, score: {} })
@@ -334,9 +476,9 @@ Process:
   return instructions[stage] || 'Guide the client through their current needs.'
 }
 
-// Embedded fallback methodology (condensed version of BEST-PRACTICES-GUIDE)
+// ── Embedded fallback — used only if skills/ directory is completely missing ──
 const EMBEDDED_METHODOLOGY = `
-## Vibe Agent Methodology
+## Vibe Agent Methodology (Fallback — skill files not loaded)
 
 ### Non-Negotiable Sequence
 1. RESEARCH — Gather deep context using Perplexity + Firecrawl (minimum 30 min)
@@ -350,13 +492,16 @@ const EMBEDDED_METHODOLOGY = `
 - All claims backed by research data
 - Brand voice applied consistently
 - Positioning angle embedded in all copy
-- CTAs are specific, not generic ("Book a 20-min strategy call" not "Learn more")
+- CTAs are specific, not generic
 
-### Platform-Specific Rules
-- LinkedIn: 1,300 char sweet spot, hook on line 1, no hashtag spam (max 3)
+### Platform Rules
+- LinkedIn: 1,300 char sweet spot, hook on line 1, max 3 hashtags
 - Twitter/X: 280 chars, one clear point, strong opinion
 - Instagram: hook + value + CTA, 5-10 hashtags in first comment
 - Facebook: conversational, community-focused, question-based CTAs
 - Blog: minimum 1,500 words, one primary keyword, headers every 300 words
 - Email: subject line under 50 chars, preview text set, one CTA per email
+
+WARNING: Full skill library failed to load. Skills directory not found.
+Please ensure the skills/ folder is present in the repository root.
 `
