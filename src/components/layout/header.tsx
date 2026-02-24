@@ -47,7 +47,7 @@ export function Header({ clients, currentClient, isAdmin, userEmail, onMenuClick
       <div className="flex items-center gap-2 sm:gap-3">
         <div className="hidden sm:flex items-center gap-2">
           <div className="h-2 w-2 rounded-full bg-green-500" />
-          <span className="text-xs text-muted-foreground">Claude connected</span>
+          <span className="text-xs text-muted-foreground">Vibe connected</span>
         </div>
 
         {userEmail && (

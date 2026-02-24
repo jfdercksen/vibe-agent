@@ -29,6 +29,34 @@ function getAnthropic() {
   })
 }
 
+// Retry wrapper for Anthropic API calls — handles overloaded_error with exponential backoff
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  maxAttempts = 3,
+  baseDelayMs = 2000
+): Promise<T> {
+  let lastError: unknown
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn()
+    } catch (err) {
+      lastError = err
+      const isOverloaded =
+        (err instanceof Error && err.message.includes('overloaded')) ||
+        (typeof err === 'object' && err !== null && 'error' in err &&
+          typeof (err as Record<string, unknown>).error === 'object' &&
+          (err as { error: { type?: string } }).error?.type === 'overloaded_error')
+
+      if (!isOverloaded || attempt === maxAttempts) throw err
+
+      const delay = baseDelayMs * Math.pow(2, attempt - 1) // 2s, 4s, 8s
+      console.warn(`[chat] Anthropic overloaded (attempt ${attempt}/${maxAttempts}), retrying in ${delay}ms...`)
+      await new Promise(resolve => setTimeout(resolve, delay))
+    }
+  }
+  throw lastError
+}
+
 // Execute a tool call from Claude
 async function executeTool(
   toolName: ToolName,
@@ -320,14 +348,14 @@ export async function POST(request: NextRequest) {
           const failedTools: Array<{ toolName: string; error: string }> = []
 
           while (continueLoop) {
-            const response = await anthropic.messages.create({
+            const response = await withRetry(() => anthropic.messages.create({
               model: 'claude-opus-4-5',
               max_tokens: 8096,
               system: systemPrompt,
               tools: ALL_TOOLS,
               messages: currentMessages,
               stream: true,
-            })
+            }))
 
             let currentToolUseId = ''
             let currentToolName = ''
@@ -492,7 +520,11 @@ export async function POST(request: NextRequest) {
           controller.close()
         } catch (err) {
           clearInterval(keepAlive)
-          const errorMsg = err instanceof Error ? err.message : 'Unknown error'
+          const rawMsg = err instanceof Error ? err.message : String(err)
+          const isOverloaded = rawMsg.includes('overloaded')
+          const errorMsg = isOverloaded
+            ? 'Vibe is experiencing high demand right now. Please try your message again in a moment.'
+            : rawMsg
           controller.enqueue(
             encoder.encode(`data: ${JSON.stringify({ type: 'error', error: errorMsg })}\n\n`)
           )

@@ -232,9 +232,14 @@ export function ChatInterface({
                 m.id === assistantId ? { ...m, isStreaming: false } : m
               ))
             } else if (event.type === 'error') {
+              const rawError = event.error || ''
+              const isOverloaded = rawError.includes('overloaded')
+              const friendlyError = isOverloaded
+                ? "Vibe is experiencing high demand right now. Please try your message again in a moment."
+                : "Something went wrong on my end. Please try again."
               setMessages(prev => prev.map(m =>
                 m.id === assistantId
-                  ? { ...m, content: m.content || `Sorry, something went wrong: ${event.error}`, isStreaming: false }
+                  ? { ...m, content: m.content || friendlyError, isStreaming: false }
                   : m
               ))
             }
