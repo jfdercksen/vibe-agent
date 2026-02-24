@@ -10,7 +10,8 @@ import { ApprovalButtons } from '@/components/content/approval-buttons'
 import {
   Megaphone, Target, Copy, Check, ChevronRight,
   ImageIcon, Play, LayoutGrid, BookOpen, Layers,
-  Info, Lightbulb, ExternalLink, RefreshCw,
+  Info, Lightbulb, ExternalLink, RefreshCw, Type,
+  AlignLeft, Captions,
 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import type { CreativeBrief, BriefStatus } from '@/lib/types/database'
@@ -53,41 +54,69 @@ const STATUS_COLORS: Record<string, string> = {
 }
 
 // ── Concept Card ──────────────────────────────────────────────────────────────
+const isVideoFormat = (format: string) => {
+  const f = format?.toLowerCase() || ''
+  return f.includes('video') || f.includes('ugc')
+}
+
+function CharCount({ value, max }: { value: string | null; max: number }) {
+  const len = value?.length ?? 0
+  const over = len > max
+  return (
+    <span className={`text-[10px] tabular-nums ${over ? 'text-destructive font-semibold' : 'text-muted-foreground'}`}>
+      {len}/{max}
+    </span>
+  )
+}
+
 function ConceptCard({
   concept,
   index,
   isSelected,
   onSelect,
+  onImageSaved,
+  clientId,
 }: {
   concept: CreativeBrief['concepts'][number]
   index: number
   isSelected: boolean
   onSelect: () => void
+  onImageSaved: (idx: number, url: string) => void
+  clientId: string
 }) {
   const [copied, setCopied] = useState(false)
+  const [showImageGen, setShowImageGen] = useState(false)
+  const isVideo = isVideoFormat(concept.format)
 
   const handleCopy = (e: React.MouseEvent) => {
     e.stopPropagation()
-    const text = [
+    const lines = [
       `## ${concept.name}`,
-      `Hook: ${concept.hook}`,
+      concept.platform ? `Platform: ${concept.platform}` : '',
       `Format: ${concept.format}`,
-      `\nVisual Direction:\n${concept.visual_direction}`,
-      `\nCopy:\n${concept.copy_direction}`,
-    ].join('\n')
-    navigator.clipboard.writeText(text)
+      `Hook: ${concept.hook}`,
+      concept.visual_direction ? `\nVisual Direction:\n${concept.visual_direction}` : '',
+      concept.primary_text ? `\nPrimary Text:\n${concept.primary_text}` : '',
+      concept.headline ? `Headline: ${concept.headline}` : '',
+      concept.description ? `Description: ${concept.description}` : '',
+      isVideo && concept.copy_direction ? `\nScript:\n${concept.copy_direction}` : '',
+    ].filter(Boolean).join('\n')
+    navigator.clipboard.writeText(lines)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
 
   return (
     <div
-      className={`rounded-lg border p-4 cursor-pointer transition-all hover:shadow-sm overflow-hidden ${
+      className={`rounded-lg border transition-all overflow-hidden ${
         isSelected ? 'border-primary bg-primary/5 shadow-sm' : 'hover:border-primary/40'
       }`}
-      onClick={onSelect}
     >
-      <div className="flex items-start justify-between gap-2 mb-2">
+      {/* ── Header row — click to select ── */}
+      <div
+        className="flex items-start justify-between gap-2 p-4 cursor-pointer"
+        onClick={onSelect}
+      >
         <div className="flex items-center gap-2 flex-wrap min-w-0">
           <span className="text-xs font-semibold text-muted-foreground">#{index + 1}</span>
           <span className="font-medium text-sm break-words [overflow-wrap:anywhere]">{concept.name}</span>
@@ -96,6 +125,11 @@ function ConceptCard({
           )}
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
+          {concept.platform && (
+            <span className="inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] text-muted-foreground capitalize">
+              {concept.platform}
+            </span>
+          )}
           <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] text-muted-foreground">
             <FormatIcon format={concept.format} />
             {formatLabel(concept.format)}
@@ -112,27 +146,135 @@ function ConceptCard({
         </div>
       </div>
 
-      {/* Hook */}
-      <div className="mb-2">
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-0.5">Hook</p>
-        <p className="text-sm italic text-foreground/80 leading-snug break-words [overflow-wrap:anywhere]">&ldquo;{concept.hook}&rdquo;</p>
-      </div>
+      {/* ── Content body ── */}
+      <div className="px-4 pb-4 space-y-3">
 
-      {/* Visual direction */}
-      {concept.visual_direction && (
-        <div className="mb-2">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-0.5">Visual</p>
-          <p className="text-xs text-muted-foreground line-clamp-2 break-words [overflow-wrap:anywhere]">{concept.visual_direction}</p>
-        </div>
-      )}
-
-      {/* Copy preview */}
-      {concept.copy_direction && (
+        {/* Hook */}
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-0.5">Copy</p>
-          <p className="text-xs text-muted-foreground line-clamp-3 whitespace-pre-line break-words [overflow-wrap:anywhere]">{concept.copy_direction}</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-0.5">Hook</p>
+          <p className="text-sm italic text-foreground/80 leading-snug break-words [overflow-wrap:anywhere]">&ldquo;{concept.hook}&rdquo;</p>
         </div>
-      )}
+
+        {/* Visual direction */}
+        {concept.visual_direction && (
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-0.5">Visual Direction</p>
+            <p className="text-xs text-muted-foreground line-clamp-2 break-words [overflow-wrap:anywhere]">{concept.visual_direction}</p>
+          </div>
+        )}
+
+        {/* Facebook ad copy — Primary Text, Headline, Description */}
+        {(concept.primary_text || concept.headline || concept.description) && (
+          <div className="rounded-md bg-blue-50 border border-blue-100 p-3 space-y-2">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-blue-600 mb-1 flex items-center gap-1">
+              <Megaphone className="h-3 w-3" /> Facebook Ad Copy
+            </p>
+            {concept.primary_text && (
+              <div>
+                <div className="flex items-center justify-between mb-0.5">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                    <AlignLeft className="h-3 w-3" /> Primary Text
+                  </span>
+                </div>
+                <p className="text-xs text-foreground break-words [overflow-wrap:anywhere] whitespace-pre-line">{concept.primary_text}</p>
+              </div>
+            )}
+            {(concept.headline || concept.description) && (
+              <div className="grid grid-cols-2 gap-2 min-w-0">
+                {concept.headline && (
+                  <div className="min-w-0">
+                    <div className="flex items-center justify-between mb-0.5">
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                        <Type className="h-3 w-3" /> Headline
+                      </span>
+                      <CharCount value={concept.headline} max={27} />
+                    </div>
+                    <p className="text-xs font-medium text-foreground break-words [overflow-wrap:anywhere]">{concept.headline}</p>
+                  </div>
+                )}
+                {concept.description && (
+                  <div className="min-w-0">
+                    <div className="flex items-center justify-between mb-0.5">
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                        <Captions className="h-3 w-3" /> Description
+                      </span>
+                      <CharCount value={concept.description} max={27} />
+                    </div>
+                    <p className="text-xs text-muted-foreground break-words [overflow-wrap:anywhere]">{concept.description}</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Script — video formats only */}
+        {isVideo && concept.copy_direction && (
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-0.5">Script</p>
+            <p className="text-xs text-muted-foreground line-clamp-4 whitespace-pre-line break-words [overflow-wrap:anywhere]">{concept.copy_direction}</p>
+          </div>
+        )}
+
+        {/* Per-concept image */}
+        <div className="border rounded-md overflow-hidden" onClick={(e) => e.stopPropagation()}>
+          {concept.image_url ? (
+            <div>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={concept.image_url} alt={`${concept.name} creative`} className="w-full object-cover max-h-48" />
+              <div className="p-2 bg-muted/30 flex items-center justify-between gap-2">
+                <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                  <ImageIcon className="h-3 w-3" /> Saved to Media Library
+                </span>
+                <div className="flex items-center gap-1">
+                  <a href={concept.image_url} target="_blank" rel="noopener noreferrer">
+                    <Button variant="ghost" size="icon" className="h-6 w-6" title="Open full image">
+                      <ExternalLink className="h-3 w-3" />
+                    </Button>
+                  </a>
+                  <Button variant="outline" size="sm" className="h-6 gap-1 text-[10px]" onClick={() => setShowImageGen((v) => !v)}>
+                    <RefreshCw className="h-2.5 w-2.5" />
+                    {showImageGen ? 'Hide' : 'Regenerate'}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="p-2 flex items-center justify-between gap-2 bg-muted/20">
+              <span className="text-[10px] text-muted-foreground">No image generated</span>
+              <Button variant="outline" size="sm" className="h-6 gap-1 text-[10px]" onClick={() => setShowImageGen((v) => !v)}>
+                <ImageIcon className="h-2.5 w-2.5" />
+                {showImageGen ? 'Hide' : 'Generate Image'}
+              </Button>
+            </div>
+          )}
+          {showImageGen && (
+            <div className="border-t p-3">
+              <ImageGeneratorPanel
+                clientId={clientId}
+                defaultUseCase="ad_creative"
+                defaultPrompt={[
+                  `Ad creative concept: "${concept.name}"`,
+                  concept.visual_direction ? `Visual direction: ${concept.visual_direction}` : '',
+                  concept.hook ? `Hook: ${concept.hook}` : '',
+                  concept.platform ? `Platform: ${concept.platform}` : '',
+                  concept.format ? `Format: ${concept.format}` : '',
+                ].filter(Boolean).join(' — ')}
+                referenceTable="creative_briefs"
+                referenceId={clientId}
+                compact
+                onImageSaved={async (asset) => {
+                  const url = 'file_url' in asset ? asset.file_url : ''
+                  if (url) {
+                    onImageSaved(index, url)
+                    setShowImageGen(false)
+                  }
+                }}
+              />
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
@@ -144,6 +286,7 @@ function AdBriefViewModal({
   onClose,
   onStatusChange,
   onSelectConcept,
+  onConceptImageSaved,
   clientId,
 }: {
   brief: CreativeBrief | null
@@ -151,11 +294,10 @@ function AdBriefViewModal({
   onClose: () => void
   onStatusChange: (id: string, status: string) => void
   onSelectConcept: (briefId: string, idx: number) => void
+  onConceptImageSaved: (briefId: string, conceptIdx: number, url: string) => void
   clientId: string
 }) {
   const [copied, setCopied] = useState(false)
-  const [showImageGen, setShowImageGen] = useState(false)
-  const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(brief?.image_url || null)
   if (!brief) return null
 
   const handleCopy = () => {
@@ -165,15 +307,19 @@ function AdBriefViewModal({
       brief.target_audience ? `Audience: ${brief.target_audience}` : '',
       brief.key_message ? `\nKey Message: ${brief.key_message}` : '',
       brief.tone_and_mood ? `Tone: ${brief.tone_and_mood}` : '',
-      brief.mandatory_elements.length
-        ? `\nMust Include: ${brief.mandatory_elements.join(', ')}`
-        : '',
-      brief.avoid_elements.length
-        ? `Avoid: ${brief.avoid_elements.join(', ')}`
-        : '',
-      ...(brief.concepts || []).map((c, i) =>
-        [`\n## Concept ${i + 1}: ${c.name}`, `Hook: ${c.hook}`, `Format: ${c.format}`, `Visual: ${c.visual_direction}`, c.copy_direction].join('\n')
-      ),
+      brief.mandatory_elements.length ? `\nMust Include: ${brief.mandatory_elements.join(', ')}` : '',
+      brief.avoid_elements.length ? `Avoid: ${brief.avoid_elements.join(', ')}` : '',
+      ...(brief.concepts || []).map((c, i) => [
+        `\n## Concept ${i + 1}: ${c.name}`,
+        c.platform ? `Platform: ${c.platform}` : '',
+        `Format: ${c.format}`,
+        `Hook: ${c.hook}`,
+        c.visual_direction ? `Visual Direction: ${c.visual_direction}` : '',
+        c.primary_text ? `Primary Text: ${c.primary_text}` : '',
+        c.headline ? `Headline: ${c.headline}` : '',
+        c.description ? `Description: ${c.description}` : '',
+        isVideoFormat(c.format) && c.copy_direction ? `Script:\n${c.copy_direction}` : '',
+      ].filter(Boolean).join('\n')),
     ].filter(Boolean).join('\n')
     navigator.clipboard.writeText(lines)
     setCopied(true)
@@ -273,6 +419,8 @@ function AdBriefViewModal({
                     index={idx}
                     isSelected={selectedIdx === idx}
                     onSelect={() => onSelectConcept(brief.id, idx)}
+                    onImageSaved={(conceptIdx, url) => onConceptImageSaved(brief.id, conceptIdx, url)}
+                    clientId={clientId}
                   />
                 ))}
               </div>
@@ -295,91 +443,6 @@ function AdBriefViewModal({
               </div>
             </div>
           )}
-
-          {/* ── Ad image section ── */}
-          <div className="border rounded-lg overflow-hidden">
-            {generatedImageUrl ? (
-              <div>
-                <div className="relative">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={generatedImageUrl}
-                    alt="Generated ad creative"
-                    className="w-full object-cover max-h-64"
-                  />
-                  <a
-                    href={generatedImageUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="absolute top-2 right-2 rounded bg-black/50 p-1.5 hover:bg-black/70 transition-colors"
-                    title="Open full image"
-                  >
-                    <ExternalLink className="h-3.5 w-3.5 text-white" />
-                  </a>
-                </div>
-                <div className="p-3 bg-muted/30 flex items-center justify-between gap-2">
-                  <span className="text-xs text-muted-foreground flex items-center gap-1">
-                    <ImageIcon className="h-3.5 w-3.5" /> Ad image generated · saved to Media Library
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7 gap-1.5 text-xs"
-                    onClick={() => setShowImageGen((v) => !v)}
-                  >
-                    <RefreshCw className="h-3 w-3" />
-                    {showImageGen ? 'Hide Generator' : 'Generate New'}
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="p-3 flex items-center justify-between gap-2 bg-muted/20">
-                <span className="text-xs text-muted-foreground">No ad image generated yet</span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 gap-1.5 text-xs"
-                  onClick={() => setShowImageGen((v) => !v)}
-                >
-                  <ImageIcon className="h-3.5 w-3.5" />
-                  {showImageGen ? 'Hide Generator' : 'Generate Ad Image'}
-                </Button>
-              </div>
-            )}
-            {showImageGen && (
-              <div className="border-t p-3">
-                <ImageGeneratorPanel
-                  clientId={clientId}
-                  defaultUseCase="ad_creative"
-                  defaultPrompt={[
-                    `Ad creative for: "${brief.brief_name}"`,
-                    brief.key_message ? `Key message: ${brief.key_message}` : '',
-                    brief.target_audience ? `Audience: ${brief.target_audience}` : '',
-                    brief.tone_and_mood ? `Tone: ${brief.tone_and_mood}` : '',
-                    brief.concepts?.[brief.selected_concept ?? 0]?.visual_direction
-                      ? `Visual direction: ${brief.concepts[brief.selected_concept ?? 0].visual_direction}`
-                      : '',
-                  ].filter(Boolean).join(' — ')}
-                  referenceTable="creative_briefs"
-                  referenceId={brief.id}
-                  compact
-                  onImageSaved={async (asset) => {
-                    const url = 'file_url' in asset ? asset.file_url : ''
-                    if (url) {
-                      setGeneratedImageUrl(url)
-                      setShowImageGen(false)
-                      // Persist to DB
-                      await fetch('/api/content/update', {
-                        method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ table: 'creative_briefs', id: brief.id, fields: { image_url: url } }),
-                      })
-                    }
-                  }}
-                />
-              </div>
-            )}
-          </div>
 
           {/* Actions */}
           <div className="flex items-center justify-between pt-2 border-t gap-2 flex-wrap">
@@ -424,6 +487,28 @@ export function AdBriefsList({ briefs, clientId }: AdBriefsListProps) {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ table: 'creative_briefs', id: briefId, fields: { selected_concept: idx } }),
+    })
+  }
+
+  // Save image to a specific concept — updates concept JSONB in-place + syncs brief image_url if it's the selected concept
+  const handleConceptImageSaved = async (briefId: string, conceptIdx: number, url: string) => {
+    const brief = merged.find((b) => b.id === briefId)
+    if (!brief) return
+    const updatedConcepts = (brief.concepts || []).map((c, i) =>
+      i === conceptIdx ? { ...c, image_url: url } : c
+    )
+    // If this concept is the selected one, also update brief-level image_url for card view
+    const isSelectedConcept = brief.selected_concept === conceptIdx
+    const patch: Partial<CreativeBrief> = { concepts: updatedConcepts }
+    if (isSelectedConcept) patch.image_url = url
+    applyLocalUpdate(briefId, patch)
+    // Persist both concepts array and optionally image_url
+    const fields: Record<string, unknown> = { concepts: updatedConcepts }
+    if (isSelectedConcept) fields.image_url = url
+    await fetch('/api/content/update', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ table: 'creative_briefs', id: briefId, fields }),
     })
   }
 
@@ -474,6 +559,7 @@ export function AdBriefsList({ briefs, clientId }: AdBriefsListProps) {
           const selectedConcept = brief.selected_concept !== null && brief.selected_concept !== undefined
             ? concepts[brief.selected_concept]
             : null
+          const cardImageUrl = selectedConcept?.image_url ?? brief.image_url ?? null
 
           return (
             <Card
@@ -481,6 +567,15 @@ export function AdBriefsList({ briefs, clientId }: AdBriefsListProps) {
               className="flex flex-col overflow-hidden cursor-pointer transition-all hover:shadow-md hover:border-primary/40 group"
               onClick={() => setViewing(brief as CreativeBrief)}
             >
+              {/* Selected concept image thumbnail */}
+              {cardImageUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={cardImageUrl}
+                  alt={selectedConcept?.name ?? 'Ad creative'}
+                  className="w-full object-cover h-36"
+                />
+              )}
               <CardHeader className="pb-3 overflow-hidden">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2">
@@ -581,6 +676,7 @@ export function AdBriefsList({ briefs, clientId }: AdBriefsListProps) {
         onClose={() => setViewing(null)}
         onStatusChange={(id, status) => applyLocalUpdate(id, { status: status as BriefStatus })}
         onSelectConcept={handleSelectConcept}
+        onConceptImageSaved={handleConceptImageSaved}
         clientId={clientId}
       />
     </div>

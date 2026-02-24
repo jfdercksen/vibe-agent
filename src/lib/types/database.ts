@@ -272,9 +272,14 @@ export interface CreativeBrief {
   concepts: Array<{
     name: string
     hook: string
-    visual_direction: string
-    copy_direction: string
     format: string
+    platform: string | null
+    visual_direction: string
+    copy_direction: string        // script for video formats; general copy direction for others
+    primary_text: string | null   // Facebook primary text (body above image, ~125 chars ideal)
+    headline: string | null       // Facebook headline (below image, max 27 chars)
+    description: string | null    // Facebook description (below headline, max 27 chars)
+    image_url: string | null      // per-concept generated image
   }>
   selected_concept: number | null
   production_specs: unknown[]
