@@ -64,8 +64,10 @@ async function saveIntegration(
       body: JSON.stringify({ clientId, integrations: { [key]: value } }),
     })
     if (!res.ok) {
-      const data = await res.json()
-      throw new Error(data.error || 'Failed to save')
+      const text = await res.text()
+      let message = 'Failed to save'
+      try { message = JSON.parse(text)?.error || message } catch { /* not JSON */ }
+      throw new Error(message)
     }
     toast.success(`${key.charAt(0).toUpperCase() + key.slice(1)} settings saved`)
     return true
@@ -296,8 +298,10 @@ function SocialMediaCard({
       toast.success('Social media settings saved')
       onSaved(metaConfig, linkedinConfig)
     } else {
-      const data = await res.json()
-      toast.error(`Failed to save: ${data.error}`)
+      const text = await res.text()
+      let message = 'Failed to save'
+      try { message = JSON.parse(text)?.error || message } catch { /* not JSON */ }
+      toast.error(`Failed to save: ${message}`)
     }
     setSaving(false)
   }
