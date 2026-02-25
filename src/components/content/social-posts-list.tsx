@@ -21,6 +21,7 @@ import { ScheduleModal } from '@/components/content/schedule-modal'
 import { SocialPostEditModal } from '@/components/content/social-post-edit-modal'
 import { ImageGeneratorTrigger, ImageGeneratorPanel } from '@/components/images/image-generator-panel'
 import { BatchGroupView } from '@/components/content/batch-group-view'
+import { PublishButton } from '@/components/content/publish-button'
 import {
   Share2,
   Calendar,
@@ -45,6 +46,7 @@ import type { SocialPost } from '@/lib/types/database'
 interface SocialPostsListProps {
   posts: SocialPost[]
   clientId: string
+  n8nConfigured?: boolean
 }
 
 const PAGE_SIZE = 12
@@ -269,7 +271,7 @@ function PostExpandModal({
   )
 }
 
-export function SocialPostsList({ posts, clientId }: SocialPostsListProps) {
+export function SocialPostsList({ posts, clientId, n8nConfigured = false }: SocialPostsListProps) {
   const [viewMode, setViewMode] = useState<'grid' | 'batches'>('grid')
   const [platformFilter, setPlatformFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
@@ -548,6 +550,16 @@ export function SocialPostsList({ posts, clientId }: SocialPostsListProps) {
                           currentStatus={post.status}
                           compact
                           onStatusChange={(s) => applyLocalUpdate(post.id, { status: s as SocialPost['status'] })}
+                        />
+                        <PublishButton
+                          postId={post.id}
+                          clientId={clientId}
+                          contentType="social"
+                          platform={post.platform}
+                          status={post.status}
+                          n8nConfigured={n8nConfigured}
+                          compact
+                          onPublished={(s) => applyLocalUpdate(post.id, { status: s as SocialPost['status'] })}
                         />
                       </div>
                     </div>

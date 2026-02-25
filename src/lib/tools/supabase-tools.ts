@@ -69,6 +69,22 @@ export async function updateContent(
   return { success: true }
 }
 
+// Lightweight check — returns true if at least one keyword_research record exists for this client.
+// Used for prerequisite gate: SEO content skills require keyword research to have been done first.
+export async function checkKeywordsExist(clientId: string): Promise<boolean> {
+  try {
+    const supabase = createAdminClient()
+    const { count, error } = await supabase
+      .from('keyword_research')
+      .select('id', { count: 'exact', head: true })
+      .eq('client_id', clientId)
+    if (error) return false
+    return (count ?? 0) > 0
+  } catch {
+    return false // fail open — don't block chat if check fails
+  }
+}
+
 export async function getClientContext(clientId: string): Promise<Record<string, unknown>> {
   const supabase = createAdminClient()
 

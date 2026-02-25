@@ -17,6 +17,7 @@ import {
   updateClientOnboardingStage,
   saveChatMessage,
   getChatHistory,
+  checkKeywordsExist,
   ContentTable,
 } from '@/lib/tools/supabase-tools'
 
@@ -290,10 +291,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Load client context + chat history in parallel
-    const [clientContext, chatHistory] = await Promise.all([
+    // Load client context + chat history + keyword check in parallel
+    const [clientContext, chatHistory, hasKeywords] = await Promise.all([
       getClientContext(clientId),
       getChatHistory(clientId, 40),
+      checkKeywordsExist(clientId),
     ])
 
     if (!clientContext.client) {
@@ -310,11 +312,13 @@ export async function POST(request: NextRequest) {
     const onboardingCompleted = (clientContext.client as Record<string, unknown>).onboarding_completed as boolean
     const mode = onboardingCompleted ? 'freeform' : 'onboarding'
 
-    // Build system prompt with full client context
+    // Build system prompt with full client context + prerequisite flags + user message for skill selection
     const systemPrompt = buildSystemPrompt({
       clientContext: clientContext as unknown as Parameters<typeof buildSystemPrompt>[0]['clientContext'],
       isMarketer,
       mode,
+      userMessage: message,
+      hasKeywords,
     })
 
     // Build message history for Claude (last 40 messages)

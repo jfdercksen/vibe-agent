@@ -12,6 +12,7 @@ import { ApprovalButtons } from '@/components/content/approval-buttons'
 import { ScheduleModal } from '@/components/content/schedule-modal'
 import { BlogPostEditModal } from '@/components/content/blog-post-edit-modal'
 import { ImageGeneratorTrigger, ImageGeneratorPanel } from '@/components/images/image-generator-panel'
+import { PublishButton } from '@/components/content/publish-button'
 import { FileText, Search, Calendar, Eye, Copy, Check, Expand, ExternalLink, Pencil, RefreshCw, Image as ImageIcon } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import ReactMarkdown from 'react-markdown'
@@ -20,6 +21,7 @@ import type { BlogPost } from '@/lib/types/database'
 interface BlogPostsListProps {
   posts: BlogPost[]
   clientId: string
+  n8nConfigured?: boolean
 }
 
 const PAGE_SIZE = 9
@@ -231,7 +233,7 @@ function BlogExpandModal({ post, open, onClose, clientId, onImageSaved }: { post
   )
 }
 
-export function BlogPostsList({ posts, clientId }: BlogPostsListProps) {
+export function BlogPostsList({ posts, clientId, n8nConfigured = false }: BlogPostsListProps) {
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [page, setPage] = useState(1)
   const [expandedPost, setExpandedPost] = useState<BlogPost | null>(null)
@@ -411,6 +413,15 @@ export function BlogPostsList({ posts, clientId }: BlogPostsListProps) {
                         showPublish
                         compact
                         onStatusChange={(s) => applyLocalUpdate(post.id, { status: s as BlogPost['status'] })}
+                      />
+                      <PublishButton
+                        postId={post.id}
+                        clientId={clientId}
+                        contentType="blog"
+                        status={post.status}
+                        n8nConfigured={n8nConfigured}
+                        compact
+                        onPublished={(s) => applyLocalUpdate(post.id, { status: s as BlogPost['status'] })}
                       />
                     </div>
                   </div>

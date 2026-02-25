@@ -12,6 +12,7 @@ import { join } from 'path'
 
 interface LoadedSkill {
   name: string      // display name derived from filename
+  slug: string      // raw filename without extension e.g. "content-atomizer"
   category: string  // strategy | copy | creative
   content: string   // full markdown content
 }
@@ -65,8 +66,10 @@ function loadSkillLibrary(): LoadedSkill[] {
     for (const file of files) {
       try {
         const content = readFileSync(join(categoryPath, file), 'utf-8')
+        const slug = file.replace(/\.md$/, '')
         skills.push({
           name: fileNameToSkillName(file),
+          slug,
           category,
           content,
         })
@@ -100,6 +103,57 @@ function loadBestPracticesGuide(): string {
 
   console.warn('[skill-loader] BEST-PRACTICES-GUIDE.md not found — using embedded fallback')
   return EMBEDDED_METHODOLOGY
+}
+
+// ── Dynamic skill selector ────────────────────────────────────────────────────
+// Maps keyword patterns in the user's message to specific skill slugs.
+// Orchestrator is always included. When nothing matches, only Orchestrator loads.
+
+const SKILL_TRIGGERS: Record<string, string[]> = {
+  'orchestrator':             ['where', 'start', 'goal', 'plan', 'help', 'stack', 'roadmap', 'business', 'onboard'],
+  'brand-voice':              ['brand voice', 'brand', 'voice', 'tone', 'personality', 'vocabulary', 'style guide', 'writing style'],
+  'positioning-angles':       ['position', 'angle', 'differentiat', 'hook', 'psychology', 'market position', 'unique'],
+  'keyword-research':         ['keyword', 'seo', 'search volume', 'rank', 'ranking', 'traffic', 'dataforseo', 'serp'],
+  'lead-magnet':              ['lead magnet', 'opt-in', 'optin', 'freebie', 'bridge offer', 'conversion offer', 'download'],
+  'direct-response-copy':     ['landing page', 'sales page', 'sales copy', 'cta', 'headline', 'direct response', 'copy', 'copywriting'],
+  'email-sequences':          ['email sequence', 'automation', 'welcome series', 'nurture', 'drip campaign', 'autoresponder'],
+  'newsletter':               ['newsletter', 'weekly email', 'digest', 'regular email'],
+  'seo-content':              ['blog post', 'blog', 'article', 'content brief', 'seo content', 'pillar page', 'long form'],
+  'content-atomizer':         ['atomize', 'repurpose', 'social post', 'social posts', '15 post', 'batch post', 'content batch'],
+  'ai-creative-strategist':   ['creative brief', 'campaign', 'ad strategy', 'concept', 'creative strategy'],
+  'dtc-ads':                  ['ad creative', 'meta ad', 'facebook ad', 'tiktok ad', 'youtube ad', 'ad hook', 'ad copy', 'dtc'],
+  'ai-product-photo':         ['product photo', 'hero shot', 'lifestyle photo', 'product image', 'photo shoot'],
+  'ai-product-video':         ['product video', 'video concept', 'video script', 'product reel'],
+  'ai-social-graphics':       ['social graphic', 'graphic design', 'canva', 'visual post', 'image post'],
+  'ai-talking-head':          ['talking head', 'ugc video', 'spokesperson', 'video persona', 'face to camera'],
+  'frontend-design':          ['html page', 'css', 'build page', 'design page', 'page build', 'frontend'],
+  'interactive-lead-magnets': ['calculator', 'quiz', 'interactive tool', 'self-contained html', 'roi calculator'],
+}
+
+function selectSkillsForRequest(userMessage: string, allSkills: LoadedSkill[]): LoadedSkill[] {
+  if (!userMessage || userMessage.trim().length === 0) return allSkills
+
+  const lower = userMessage.toLowerCase()
+  const matched = new Set<string>(['orchestrator']) // always include orchestrator
+
+  for (const [slug, triggers] of Object.entries(SKILL_TRIGGERS)) {
+    if (triggers.some(t => lower.includes(t))) {
+      matched.add(slug)
+    }
+  }
+
+  const selectedSkills = allSkills.filter(s => matched.has(s.slug))
+
+  // If only orchestrator matched (nothing specific found) — return just orchestrator
+  // It will guide the user to describe what they need
+  if (selectedSkills.length <= 1) {
+    console.log(`[skill-loader] No specific skill matched — loading Orchestrator only`)
+    return allSkills.filter(s => s.slug === 'orchestrator')
+  }
+
+  const names = selectedSkills.map(s => s.name).join(', ')
+  console.log(`[skill-loader] Dynamic skill selection: ${names}`)
+  return selectedSkills
 }
 
 // ── Build the formatted skill library block ───────────────────────────────────
@@ -137,6 +191,62 @@ ${skill.content.trim()}
   return blocks.join('\n')
 }
 
+// ── Prerequisite gate builder ─────────────────────────────────────────────────
+// Injected into the system prompt only when required foundation data is missing.
+// Uses strong directive language — Claude MUST refuse and redirect, not proceed anyway.
+
+interface PrerequisiteFlags {
+  hasBrandVoice: boolean
+  hasPositioningAngles: boolean
+  hasKeywords: boolean
+}
+
+function buildPrerequisiteGate(flags: PrerequisiteFlags): string {
+  const { hasBrandVoice, hasPositioningAngles, hasKeywords } = flags
+
+  // All good — no gate needed
+  if (hasBrandVoice && hasPositioningAngles && hasKeywords) return ''
+
+  const gates: string[] = []
+
+  if (!hasBrandVoice) {
+    gates.push(`❌ BRAND VOICE NOT FOUND
+→ You MUST NOT write any copy, email sequences, newsletters, social posts, ads, or landing pages.
+→ If the user asks for any of these, respond EXACTLY: "Before I can write copy for you, we need to build your brand voice first — it's what makes everything sound like YOU. Type 'Let's build my brand voice' and I'll guide you through it step by step."
+→ Do not attempt to guess the voice or proceed without it.`)
+  }
+
+  if (!hasPositioningAngles) {
+    gates.push(`❌ POSITIONING ANGLES NOT FOUND
+→ You MUST NOT write direct response copy, email sequences, lead magnets, DTC ads, or campaign concepts.
+→ If the user asks for these, respond EXACTLY: "We need to define your positioning angles before writing persuasive copy — without this, the copy won't have a strategic edge. Type 'Let's define my positioning' to start."
+→ Positioning angles REQUIRE brand voice to exist first.`)
+  }
+
+  if (!hasKeywords) {
+    gates.push(`❌ KEYWORD RESEARCH NOT DONE
+→ You MUST NOT write SEO blog posts or SEO content without keyword data.
+→ If the user asks for blog content or SEO content, respond EXACTLY: "To write SEO content that actually ranks, I need keyword data first. Type 'Run keyword research for me' and I'll use DataForSEO to find the best opportunities."
+→ You CAN still write non-SEO content (social posts, emails, ads) without keyword data.`)
+  }
+
+  return `
+## ⚠️ SKILL PREREQUISITES — ENFORCE STRICTLY
+
+This client is missing required foundation data. These are HARD rules — not suggestions.
+
+${gates.join('\n\n')}
+
+**What you CAN still do:**
+${hasBrandVoice ? '' : '- Run the Brand Voice skill (it is the first priority)\n'}${!hasBrandVoice ? '' : !hasPositioningAngles ? '- Run the Positioning Angles skill\n' : ''}
+- Answer questions about the business or marketing strategy
+- Do market research (Perplexity, Firecrawl)
+- Explain what each skill does and why it matters
+- Help the user understand the process
+
+`
+}
+
 // ── Client context interface ──────────────────────────────────────────────────
 interface ClientContext {
   client: {
@@ -162,19 +272,30 @@ interface SystemPromptOptions {
   clientContext: ClientContext
   isMarketer: boolean
   mode: 'onboarding' | 'freeform'
+  userMessage?: string          // Used for dynamic skill selection
+  hasKeywords?: boolean         // Whether keyword_research records exist for this client
 }
 
 // ── Main system prompt builder ────────────────────────────────────────────────
 export function buildSystemPrompt(options: SystemPromptOptions): string {
-  const { clientContext, isMarketer, mode } = options
+  const { clientContext, isMarketer, mode, userMessage = '', hasKeywords = false } = options
   const { client, brandVoice, positioningAngles, recentPosts } = clientContext
 
-  const skills = loadSkillLibrary()
-  const skillLibraryBlock = buildSkillLibraryBlock(skills)
+  // Load all skills once (cached), then select only relevant ones for this request
+  const allSkills = loadSkillLibrary()
+  const selectedSkills = selectSkillsForRequest(userMessage, allSkills)
+  const skillLibraryBlock = buildSkillLibraryBlock(selectedSkills)
   const bestPractices = loadBestPracticesGuide()
 
   const onboardingStage = client.onboarding_stage || 1
   const onboardingCompleted = client.onboarding_completed || false
+
+  // Build prerequisite gate (empty string if all prerequisites met)
+  const prerequisiteGate = buildPrerequisiteGate({
+    hasBrandVoice: !!brandVoice,
+    hasPositioningAngles: (positioningAngles?.length ?? 0) > 0,
+    hasKeywords,
+  })
 
   const stageDescriptions: Record<number, string> = {
     1: 'Stage 1: Business Discovery — gather all information about the client\'s business, audience, goals, and competitors',
@@ -185,6 +306,10 @@ export function buildSystemPrompt(options: SystemPromptOptions): string {
   }
 
   const currentStageDesc = stageDescriptions[onboardingStage] || 'Free-form marketing assistance'
+
+  const skillNote = selectedSkills.length < allSkills.length && allSkills.length > 0
+    ? `\n> **Skills loaded for this request (${selectedSkills.length}/${allSkills.length}):** ${selectedSkills.map(s => s.name).join(', ')}. If you need a different skill, describe what you want to create and I'll apply the right framework.`
+    : ''
 
   return `# You are Vibe, a world-class AI marketing strategist embedded in the Vibe Agent platform.
 
@@ -210,9 +335,9 @@ You are not a generic AI assistant. You are a senior marketing strategist who co
 5. ITERATION — reject cycles until quality gates pass
 
 ---
-
+${prerequisiteGate}
 ## How to Use Your Skill Library
-You have 19 specialist marketing skills below. Each skill is a complete methodology — it tells you exactly how to research, structure, write, and save that type of content.
+You have specialist marketing skills below. Each skill is a complete methodology — it tells you exactly how to research, structure, write, and save that type of content.
 
 **When to use skills:**
 - When a user's request matches a skill type, apply that skill's FULL framework — don't improvise
@@ -240,7 +365,9 @@ You have 19 specialist marketing skills below. Each skill is a complete methodol
 
 ---
 
-## Your Full Skill Library (${skills.length > 0 ? skills.length : '19'} Skills)
+## Active Skills For This Request (${selectedSkills.length} loaded)
+${skillNote}
+
 ${skillLibraryBlock}
 
 ---
@@ -272,6 +399,8 @@ ${positioningAngles && positioningAngles.length > 0 ? `
     ? `"${(positioningAngles.find(a => a.is_selected) as Record<string, unknown>).core_hook}"`
     : 'None selected yet'}
 ` : '**Positioning Angles:** ❌ Not created yet — run Positioning Angles skill before writing copy'}
+
+${hasKeywords ? '**Keyword Research:** ✅ Done' : '**Keyword Research:** ❌ Not done yet — run Keyword Research before writing SEO content'}
 
 ${recentPosts && recentPosts.length > 0 ? `
 **Recent Content:** ${recentPosts.length} posts in database
@@ -326,7 +455,8 @@ Always use the brand voice and selected positioning angle in all copy.
   ⚠️ CRITICAL: Save EACH angle as a SEPARATE record — not one combined document.
   Required fields: client_id, angle_number (1-5), framework (string), core_hook (string), psychology (string), headline_directions (array of strings), anti_angle (string), risk (string), is_selected (false initially), score ({differentiation:N, risk:N, memorability:N})
 - Social posts (individual) → save_content('social_posts', {...}) for each post
-- Content Atomizer batches → TWO-STEP SAVE — CRITICAL:
+- Content Atomizer batches → TWO-STEP SAVE — HARD RULE:
+  ⚠️ YOU MUST CALL start_batch() BEFORE saving ANY atomized posts. No exceptions.
   1. FIRST call start_batch({ label: '<source content title — max 60 chars>' }) — returns { batch_id, batch_label }
   2. THEN for EVERY post call save_content('social_posts', { ..., batch_id, batch_label }) using the SAME batch_id from step 1
   ⚠️ NEVER save atomized posts without batch_id — they become ungroupable orphans in the dashboard
