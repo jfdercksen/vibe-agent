@@ -39,19 +39,18 @@ export async function PATCH(req: NextRequest) {
     }
 
     const supabase = createAdminClient()
-    const { error, count } = await supabase
+    const { error } = await supabase
       .from('social_posts')
       .update({ ...safeFields, updated_at: new Date().toISOString() })
       .eq('client_id', clientId)   // security: client isolation
       .eq('batch_id', batch_id)
-      .select('id', { count: 'exact', head: true })
 
     if (error) {
       console.error('[batch-update] error:', error)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    return NextResponse.json({ success: true, updated: count ?? 0 })
+    return NextResponse.json({ success: true })
   } catch (err) {
     console.error('[batch-update] route error:', err)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
