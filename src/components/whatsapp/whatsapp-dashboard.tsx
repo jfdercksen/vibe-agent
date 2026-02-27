@@ -2,11 +2,13 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import type { WhatsAppConversationWithMessages, WhatsAppMessage } from '@/lib/types/database'
-import { MessageCircle, Phone, Clock, Settings, RefreshCw } from 'lucide-react'
+import { MessageCircle, Phone, Clock, Settings, RefreshCw, Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
+import { toast } from 'sonner'
 
 interface WhatsAppDashboardProps {
   clientId: string
@@ -24,9 +26,12 @@ export function WhatsAppDashboard({
     initialConversations[0] ?? null
   )
   const [refreshing, setRefreshing] = useState(false)
+  const [reply, setReply] = useState('')
+  const [sending, setSending] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  // Scroll to bottom of messages
+  // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [selected?.whatsapp_messages.length])
@@ -57,7 +62,73 @@ export function WhatsAppDashboard({
     return () => clearInterval(interval)
   }, [refresh])
 
-  // Not configured state
+  // Send a manual reply
+  const handleSend = useCallback(async () => {
+    if (!selected || !reply.trim() || sending) return
+
+    const messageText = reply.trim()
+    setSending(true)
+    setReply('')
+
+    // Optimistic update — show immediately in the thread
+    const optimisticMsg: WhatsAppMessage = {
+      id: `optimistic-${Date.now()}`,
+      conversation_id: selected.id,
+      role: 'assistant',
+      content: messageText,
+      created_at: new Date().toISOString(),
+    }
+    const updatedConv = {
+      ...selected,
+      whatsapp_messages: [...selected.whatsapp_messages, optimisticMsg],
+      last_message_at: new Date().toISOString(),
+    }
+    setSelected(updatedConv)
+    setConversations(prev =>
+      prev.map(c => c.id === selected.id ? updatedConv : c)
+    )
+
+    try {
+      const res = await fetch('/api/whatsapp/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          conversationId: selected.id,
+          clientId,
+          message: messageText,
+        }),
+      })
+
+      if (!res.ok) {
+        const text = await res.text()
+        let errMsg = 'Failed to send'
+        try { errMsg = JSON.parse(text)?.error || errMsg } catch { /* not JSON */ }
+        toast.error(errMsg)
+        // Revert optimistic update
+        setSelected(selected)
+        setConversations(prev =>
+          prev.map(c => c.id === selected.id ? selected : c)
+        )
+        setReply(messageText) // Restore the typed message
+      } else {
+        // Refresh to replace optimistic ID with real DB record
+        await refresh()
+      }
+    } finally {
+      setSending(false)
+      textareaRef.current?.focus()
+    }
+  }, [selected, reply, sending, clientId, refresh])
+
+  // Submit on Enter (Shift+Enter for newline)
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleSend()
+    }
+  }, [handleSend])
+
+  // ── Not configured ──────────────────────────────────────────────────────────
   if (!isConfigured) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
@@ -80,7 +151,7 @@ export function WhatsAppDashboard({
     )
   }
 
-  // Empty state — configured but no conversations yet
+  // ── Empty state ─────────────────────────────────────────────────────────────
   if (conversations.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
@@ -101,6 +172,7 @@ export function WhatsAppDashboard({
     )
   }
 
+  // ── Main layout ─────────────────────────────────────────────────────────────
   return (
     <div className="flex h-[calc(100vh-12rem)] border rounded-xl overflow-hidden bg-background">
 
@@ -121,7 +193,7 @@ export function WhatsAppDashboard({
             return (
               <button
                 key={conv.id}
-                onClick={() => setSelected(conv)}
+                onClick={() => { setSelected(conv); setReply('') }}
                 className={cn(
                   'w-full text-left px-4 py-3 border-b hover:bg-accent/50 transition-colors',
                   isSelected && 'bg-primary/5 border-l-2 border-l-primary'
@@ -141,22 +213,19 @@ export function WhatsAppDashboard({
                   </span>
                 </div>
 
-                {/* Phone number if contact name is shown */}
                 {conv.contact_name && (
                   <p className="text-[10px] text-muted-foreground mb-1">{conv.phone_number}</p>
                 )}
 
-                {/* Last message preview */}
                 {lastMsg && (
                   <p className="text-xs text-muted-foreground truncate">
                     <span className={cn('font-medium', lastMsg.role === 'assistant' && 'text-primary/70')}>
-                      {lastMsg.role === 'user' ? '↙' : '↗ AI:'}
+                      {lastMsg.role === 'user' ? '↙' : '↗'}
                     </span>{' '}
                     {lastMsg.content}
                   </p>
                 )}
 
-                {/* Message count badge */}
                 <div className="mt-1.5">
                   <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded-full text-muted-foreground">
                     {conv.whatsapp_messages.length} message{conv.whatsapp_messages.length !== 1 ? 's' : ''}
@@ -170,10 +239,9 @@ export function WhatsAppDashboard({
 
       {/* ── Right: Message Thread ── */}
       <div className="flex-1 flex flex-col min-w-0">
-
-        {/* Thread header */}
         {selected ? (
           <>
+            {/* Thread header */}
             <div className="px-5 py-3 border-b bg-muted/20 flex items-center justify-between shrink-0">
               <div>
                 <p className="text-sm font-semibold">{selected.contact_name || selected.phone_number}</p>
@@ -183,7 +251,7 @@ export function WhatsAppDashboard({
               </div>
               <div className="flex items-center gap-1.5">
                 <div className="h-2 w-2 rounded-full bg-green-500" />
-                <span className="text-xs text-muted-foreground">Claude is responding</span>
+                <span className="text-xs text-muted-foreground">Claude is auto-replying</span>
               </div>
             </div>
 
@@ -193,6 +261,37 @@ export function WhatsAppDashboard({
                 <MessageBubble key={msg.id} message={msg} />
               ))}
               <div ref={messagesEndRef} />
+            </div>
+
+            {/* ── Reply input bar ── */}
+            <div className="shrink-0 border-t bg-background px-4 py-3">
+              <div className="flex gap-2 items-end">
+                <Textarea
+                  ref={textareaRef}
+                  value={reply}
+                  onChange={e => setReply(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Type a manual reply… (Enter to send, Shift+Enter for newline)"
+                  className="min-h-[42px] max-h-32 resize-none text-sm flex-1"
+                  disabled={sending}
+                  rows={1}
+                />
+                <Button
+                  onClick={handleSend}
+                  disabled={!reply.trim() || sending}
+                  size="sm"
+                  className="h-[42px] px-3 bg-green-600 hover:bg-green-700 text-white shrink-0"
+                >
+                  {sending ? (
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-1.5">
+                This sends directly from your WhatsApp Business number. Claude will still auto-reply to future customer messages.
+              </p>
             </div>
           </>
         ) : (
@@ -207,15 +306,17 @@ export function WhatsAppDashboard({
 
 function MessageBubble({ message }: { message: WhatsAppMessage }) {
   const isUser = message.role === 'user'
+  const isOptimistic = message.id.startsWith('optimistic-')
 
   return (
     <div className={cn('flex', isUser ? 'justify-start' : 'justify-end')}>
       <div
         className={cn(
-          'max-w-[75%] rounded-2xl px-4 py-2.5 text-sm',
+          'max-w-[75%] rounded-2xl px-4 py-2.5 text-sm transition-opacity',
           isUser
             ? 'bg-muted text-foreground rounded-tl-sm'
-            : 'bg-green-600 text-white rounded-tr-sm'
+            : 'bg-green-600 text-white rounded-tr-sm',
+          isOptimistic && 'opacity-70'
         )}
       >
         <p className="whitespace-pre-wrap break-words">{message.content}</p>
@@ -223,8 +324,8 @@ function MessageBubble({ message }: { message: WhatsAppMessage }) {
           'text-[10px] mt-1',
           isUser ? 'text-muted-foreground' : 'text-green-100'
         )}>
-          {isUser ? '👤 Customer' : '🤖 Claude'} ·{' '}
-          {formatDistanceToNow(new Date(message.created_at), { addSuffix: true })}
+          {isUser ? '👤 Customer' : '🟢 You'} ·{' '}
+          {isOptimistic ? 'sending…' : formatDistanceToNow(new Date(message.created_at), { addSuffix: true })}
         </p>
       </div>
     </div>
