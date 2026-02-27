@@ -2,7 +2,14 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 // Paths that are accessible without an authenticated session
-const PUBLIC_PATHS = ['/login', '/api/auth/callback', '/api/auth/logout', '/api/auth/login']
+const PUBLIC_PATHS = [
+  '/login',
+  '/api/auth/callback',
+  '/api/auth/logout',
+  '/api/auth/login',
+  '/api/webhooks/whatsapp',  // Meta webhook — must be public (no session)
+  '/api/webhooks/n8n',       // n8n publish callback — must be public
+]
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
