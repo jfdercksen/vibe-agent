@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import type { WhatsAppConversationWithMessages, WhatsAppMessage } from '@/lib/types/database'
 import { MessageCircle, Phone, Clock, Settings, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -26,44 +25,31 @@ export function WhatsAppDashboard({
   )
   const [refreshing, setRefreshing] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const supabase = createClient()
 
   // Scroll to bottom of messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [selected?.whatsapp_messages.length])
 
-  // Refresh conversations from the server
+  // Refresh via API route — uses admin client server-side, no RLS/anon key issues
   const refresh = useCallback(async () => {
     setRefreshing(true)
     try {
-      const { data } = await supabase
-        .from('whatsapp_conversations')
-        .select('*, whatsapp_messages(*)')
-        .eq('client_id', clientId)
-        .order('last_message_at', { ascending: false })
-        .limit(50)
+      const res = await fetch(`/api/whatsapp/conversations?clientId=${clientId}`)
+      if (!res.ok) return
+      const data: WhatsAppConversationWithMessages[] = await res.json()
 
-      if (data) {
-        const sorted = data.map(conv => ({
-          ...conv,
-          whatsapp_messages: (conv.whatsapp_messages || []).sort(
-            (a: WhatsAppMessage, b: WhatsAppMessage) =>
-              new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-          ),
-        }))
-        setConversations(sorted)
+      setConversations(data)
 
-        // Update selected conversation if it's in the new data
-        if (selected) {
-          const updated = sorted.find(c => c.id === selected.id)
-          if (updated) setSelected(updated)
-        }
+      // Keep selected conversation in sync with latest messages
+      if (selected) {
+        const updated = data.find(c => c.id === selected.id)
+        if (updated) setSelected(updated)
       }
     } finally {
       setRefreshing(false)
     }
-  }, [clientId, selected, supabase])
+  }, [clientId, selected])
 
   // Poll every 10 seconds for new messages
   useEffect(() => {
