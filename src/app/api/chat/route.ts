@@ -640,6 +640,7 @@ export async function POST(request: NextRequest) {
           clearInterval(keepAlive)
           const rawMsg = err instanceof Error ? err.message : String(err)
           const isOverloaded = rawMsg.includes('overloaded')
+          console.error('[chat/stream] Unhandled error in agentic loop:', rawMsg)
           const errorMsg = isOverloaded
             ? 'Vibe is experiencing high demand right now. Please try your message again in a moment.'
             : rawMsg

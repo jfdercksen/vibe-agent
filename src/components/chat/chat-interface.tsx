@@ -236,10 +236,10 @@ export function ChatInterface({
               const isOverloaded = rawError.includes('overloaded')
               const friendlyError = isOverloaded
                 ? "Vibe is experiencing high demand right now. Please try your message again in a moment."
-                : "Something went wrong on my end. Please try again."
+                : rawError || "Something went wrong on my end. Please try again."
               setMessages(prev => prev.map(m =>
                 m.id === assistantId
-                  ? { ...m, content: m.content || friendlyError, isStreaming: false }
+                  ? { ...m, content: m.content || `⚠️ ${friendlyError}`, isStreaming: false }
                   : m
               ))
             }
