@@ -113,8 +113,10 @@ function normalizePhone(phone: string): { international: string; withPlus: strin
 
 // ── Session management ─────────────────────────────────────────────────────────
 // A fresh session is obtained on every request (no caching).
+// Returns both sessionName and the logged-in user's Vtiger userId (e.g. "19x1")
+// which is required as assigned_user_id when creating ModComments.
 
-async function getSession(config: VtigerConfig): Promise<string> {
+async function getSessionData(config: VtigerConfig): Promise<{ sessionName: string; userId: string }> {
   const url = apiUrl(config.instance_url)
 
   // Step 1: Get challenge token
@@ -142,7 +144,7 @@ async function getSession(config: VtigerConfig): Promise<string> {
   const token = challengeData.result.token
   const computedKey = md5(token + config.access_key)
 
-  // Step 2: Login and get sessionName
+  // Step 2: Login and get sessionName + userId
   const loginBody = new URLSearchParams({
     operation: 'login',
     username: config.username,
@@ -161,7 +163,7 @@ async function getSession(config: VtigerConfig): Promise<string> {
 
   const loginData = await safeJson<{
     success: boolean
-    result?: { sessionName: string }
+    result?: { sessionName: string; userId: string }
     error?: { message: string }
   }>(loginRes, 'login')
 
@@ -171,7 +173,16 @@ async function getSession(config: VtigerConfig): Promise<string> {
     )
   }
 
-  return loginData.result.sessionName
+  return {
+    sessionName: loginData.result.sessionName,
+    userId: loginData.result.userId || '',
+  }
+}
+
+// Convenience wrapper — returns only the sessionName (used by search/query helpers)
+async function getSession(config: VtigerConfig): Promise<string> {
+  const { sessionName } = await getSessionData(config)
+  return sessionName
 }
 
 // ── Search ─────────────────────────────────────────────────────────────────────
@@ -405,6 +416,15 @@ export async function createLead(
  * Update any fields on an existing Vtiger record.
  * Retrieves the full record first to avoid clobbering existing fields.
  */
+// Vtiger module-ID → VQL table name (used as fallback for retrieve)
+const VTIGER_MODULE_MAP: Record<string, string> = {
+  '4':  'Leads',
+  '12': 'Contacts',
+  '6':  'Accounts',
+  '9':  'Potentials',
+  '13': 'Cases',
+}
+
 export async function updateRecord(
   config: VtigerConfig,
   recordId: string,
@@ -413,7 +433,11 @@ export async function updateRecord(
   const sessionName = await getSession(config)
   const url = apiUrl(config.instance_url)
 
-  // Retrieve the full record first
+  // ── Step 1: Get the full current record ────────────────────────────────────
+  // Try retrieve first (fastest); fall back to VQL query if permission is denied.
+  // Some Vtiger profiles allow VQL SELECT on all records but restrict retrieve to owned records.
+  let fullRecord: Record<string, unknown> | null = null
+
   const retrieveRes = await fetch(
     `${url}?operation=retrieve&sessionName=${encodeURIComponent(sessionName)}&id=${encodeURIComponent(recordId)}`
   )
@@ -423,12 +447,34 @@ export async function updateRecord(
     error?: { message: string }
   }>(retrieveRes, 'retrieve')
 
-  if (!retrieveData.success || !retrieveData.result) {
-    throw new Error(`Vtiger retrieve error: ${retrieveData.error?.message || 'Record not found'}`)
+  if (retrieveData.success && retrieveData.result) {
+    fullRecord = retrieveData.result
+  } else {
+    // Fallback: use VQL to get the full record (avoids retrieve permission check)
+    const moduleId = recordId.split('x')[0]
+    const moduleName = VTIGER_MODULE_MAP[moduleId]
+    if (moduleName) {
+      const fallbackQuery = `SELECT * FROM ${moduleName} WHERE id = '${recordId}' LIMIT 1;`
+      const fallbackRes = await fetch(
+        `${url}?operation=query&sessionName=${encodeURIComponent(sessionName)}&query=${encodeURIComponent(fallbackQuery)}`
+      )
+      const fallbackData = await safeJson<{
+        success: boolean
+        result?: Record<string, unknown>[]
+        error?: { message: string }
+      }>(fallbackRes, `query(${moduleName} by id)`)
+      if (fallbackData.success && fallbackData.result && fallbackData.result.length > 0) {
+        fullRecord = fallbackData.result[0]
+      }
+    }
+    if (!fullRecord) {
+      throw new Error(`Vtiger retrieve error: ${retrieveData.error?.message || 'Record not found'}`)
+    }
   }
 
+  // ── Step 2: Merge updates and send ─────────────────────────────────────────
   // Merge updates into the full record
-  const element = JSON.stringify({ ...retrieveData.result, ...updates })
+  const element = JSON.stringify({ ...fullRecord, ...updates })
 
   const body = new URLSearchParams({
     operation: 'update',
@@ -465,12 +511,14 @@ export async function addNote(
   recordId: string,
   noteText: string
 ): Promise<{ id: string }> {
-  const sessionName = await getSession(config)
+  // ModComments requires assigned_user_id — capture it from the login response
+  const { sessionName, userId } = await getSessionData(config)
   const url = apiUrl(config.instance_url)
 
   const element = JSON.stringify({
     commentcontent: noteText,
     related_to: recordId,
+    ...(userId ? { assigned_user_id: userId } : {}),
   })
 
   const body = new URLSearchParams({
