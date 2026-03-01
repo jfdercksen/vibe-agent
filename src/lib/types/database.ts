@@ -53,6 +53,11 @@ export interface IntegrationConfig {
     verify_token: string        // Secret string for webhook verification
     agent_prompt: string        // Claude's persona/instructions for this client
   }
+  vtiger?: {
+    instance_url: string        // e.g. https://crm.clientdomain.com
+    username: string            // Vtiger login username
+    access_key: string          // Vtiger access key from My Profile → Access Credentials
+  }
 }
 
 export interface WhatsAppConversation {

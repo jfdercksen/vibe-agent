@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import Anthropic from '@anthropic-ai/sdk'
+import { searchByPhone, addNote } from '@/lib/crm/vtiger'
+import type { VtigerConfig, VtigerContact } from '@/lib/crm/vtiger'
+import type { IntegrationConfig } from '@/lib/types/database'
 
 // ── GET — Meta webhook verification ───────────────────────────────────────
 // Meta sends a GET request with hub.mode, hub.verify_token, hub.challenge
@@ -121,6 +124,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true })
     }
 
+    // ── CRM lookup (optional — skip gracefully if not configured) ──────────
+    let crmContact: VtigerContact | null = null
+    const vtigerConfig = (client.integrations as IntegrationConfig)?.vtiger as VtigerConfig | undefined
+
+    if (vtigerConfig?.instance_url && vtigerConfig?.username && vtigerConfig?.access_key) {
+      try {
+        crmContact = await searchByPhone(vtigerConfig, fromNumber)
+        if (crmContact) {
+          console.log(`[WhatsApp Webhook] CRM match for ${fromNumber}: ${crmContact.vtiger_no} (${crmContact.customer_status})`)
+        } else {
+          console.log(`[WhatsApp Webhook] No CRM record for ${fromNumber} — new visitor`)
+        }
+      } catch (crmErr) {
+        // Don't block the WhatsApp reply if CRM lookup fails
+        console.warn('[WhatsApp Webhook] CRM lookup failed (non-blocking):', crmErr)
+      }
+    }
+
     // ── Upsert conversation ────────────────────────────────────────────────
     const { data: conv, error: convError } = await supabase
       .from('whatsapp_conversations')
@@ -164,6 +185,15 @@ export async function POST(request: NextRequest) {
       content: m.content,
     }))
 
+    // ── Build system prompt with optional CRM context ─────────────────────
+    const crmContext = crmContact
+      ? `\n\n## Customer CRM Profile\n- Name: ${crmContact.firstname} ${crmContact.lastname}${crmContact.company ? ` (${crmContact.company})` : ''}\n- Status: ${crmContact.customer_status === 'existing_lead' ? 'Existing Lead' : 'Existing Contact'} — ${crmContact.vtiger_no}\n${crmContact.leadstatus ? `- Lead Status: ${crmContact.leadstatus}\n` : ''}${crmContact.description ? `- Notes: ${crmContact.description}\n` : ''}\nAddress them by name (${crmContact.firstname}) and use this context to personalize your response.`
+      : vtigerConfig
+        ? `\n\n## Customer CRM Profile\nThis customer is not yet in the CRM. If they provide contact details or express interest, the system will create a lead record automatically.`
+        : ''
+
+    const fullSystemPrompt = whatsappConfig.agent_prompt + crmContext
+
     // ── Generate AI reply with Claude ──────────────────────────────────────
     const anthropic = new Anthropic({
       apiKey: process.env.ANTHROPIC_API_KEY!,
@@ -174,7 +204,7 @@ export async function POST(request: NextRequest) {
       const response = await anthropic.messages.create({
         model: 'claude-opus-4-5',
         max_tokens: 1024,
-        system: whatsappConfig.agent_prompt,
+        system: fullSystemPrompt,
         messages: conversationHistory,
       })
 
@@ -200,6 +230,17 @@ export async function POST(request: NextRequest) {
 
     if (assistantMsgError) {
       console.error('[WhatsApp Webhook] Failed to save assistant message:', assistantMsgError)
+    }
+
+    // ── Log conversation note to CRM (optional) ───────────────────────────
+    if (crmContact && vtigerConfig) {
+      try {
+        const note = `[WhatsApp] Customer: "${messageText.slice(0, 200)}"\nAgent reply: "${aiReply.slice(0, 200)}"`
+        await addNote(vtigerConfig, crmContact.id, note)
+        console.log(`[WhatsApp Webhook] CRM note logged to ${crmContact.vtiger_no}`)
+      } catch (noteErr) {
+        console.warn('[WhatsApp Webhook] CRM note logging failed (non-blocking):', noteErr)
+      }
     }
 
     // ── Send reply via Meta WhatsApp Cloud API ─────────────────────────────

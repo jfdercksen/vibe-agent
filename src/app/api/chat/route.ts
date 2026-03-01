@@ -235,6 +235,82 @@ async function executeTool(
       }
     }
 
+    case 'crm_search': {
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001'
+      const res = await fetch(`${baseUrl}/api/crm/search`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientId,
+          phone: toolInput.phone || undefined,
+          email: toolInput.email || undefined,
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || 'CRM search failed')
+      }
+      const result = await res.json()
+      return result.contact
+        ? { found: true, contact: result.contact }
+        : { found: false, message: 'No matching lead or contact found in CRM' }
+    }
+
+    case 'crm_create_lead': {
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001'
+      const res = await fetch(`${baseUrl}/api/crm/create-lead`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientId,
+          data: toolInput,
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || 'Create lead failed')
+      }
+      const result = await res.json()
+      return { success: true, id: result.id, lead_no: result.lead_no, message: `Lead created: ${result.lead_no}` }
+    }
+
+    case 'crm_update_record': {
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001'
+      const res = await fetch(`${baseUrl}/api/crm/update-record`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientId,
+          recordId: toolInput.record_id,
+          updates: toolInput.updates,
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || 'Update record failed')
+      }
+      return { success: true, message: 'Record updated successfully' }
+    }
+
+    case 'crm_add_note': {
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001'
+      const res = await fetch(`${baseUrl}/api/crm/add-note`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientId,
+          recordId: toolInput.record_id,
+          note: toolInput.note,
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || 'Add note failed')
+      }
+      const result = await res.json()
+      return { success: true, comment_id: result.comment_id, message: 'Note added to CRM record' }
+    }
+
     case 'update_onboarding_stage':
       await updateClientOnboardingStage(
         clientId,
@@ -612,6 +688,20 @@ function getToolSummary(
       const r = result as { count?: number; modelLabel?: string }
       return `Edited image with ${r?.modelLabel || 'AI'} — ${r?.count || 0} variation(s) saved to Media Library`
     }
+    case 'crm_search': {
+      const r = result as { found?: boolean; contact?: { firstname?: string; lastname?: string; vtiger_no?: string } }
+      return r?.found
+        ? `Found CRM record: ${r.contact?.firstname} ${r.contact?.lastname} (${r.contact?.vtiger_no})`
+        : 'No matching record found in CRM'
+    }
+    case 'crm_create_lead': {
+      const r = result as { lead_no?: string }
+      return `Created CRM lead: ${r?.lead_no || 'new record'}`
+    }
+    case 'crm_update_record':
+      return `Updated CRM record: ${input.record_id}`
+    case 'crm_add_note':
+      return `Note added to CRM record: ${input.record_id}`
     case 'update_onboarding_stage':
       return `Advanced to Stage ${input.stage}${input.completed ? ' — Onboarding Complete!' : ''}`
     case 'save_lead_magnet_html': {

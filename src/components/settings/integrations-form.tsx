@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import { Globe, Mail, Share2, Workflow, Eye, EyeOff, Loader2, Check, MessageCircle } from 'lucide-react'
+import { Globe, Mail, Share2, Workflow, Eye, EyeOff, Loader2, Check, MessageCircle, Database, CheckCircle, XCircle } from 'lucide-react'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
 import type { IntegrationConfig } from '@/lib/types/database'
@@ -45,6 +45,11 @@ export function IntegrationsForm({ clientId, integrations: initial }: Integratio
         clientId={clientId}
         config={integrations.whatsapp}
         onSaved={(wa) => setIntegrations(prev => ({ ...prev, whatsapp: wa }))}
+      />
+      <VtigerCard
+        clientId={clientId}
+        config={integrations.vtiger}
+        onSaved={(vt) => setIntegrations(prev => ({ ...prev, vtiger: vt }))}
       />
     </div>
   )
@@ -501,6 +506,171 @@ function WhatsAppCard({
           {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
           Save WhatsApp Settings
         </Button>
+      </CardContent>
+    </Card>
+  )
+}
+
+// ─── Vtiger CRM Card ──────────────────────────────────────────
+
+function VtigerCard({
+  clientId,
+  config,
+  onSaved,
+}: {
+  clientId: string
+  config?: IntegrationConfig['vtiger']
+  onSaved: (vt: IntegrationConfig['vtiger']) => void
+}) {
+  const [instanceUrl, setInstanceUrl] = useState(config?.instance_url || '')
+  const [username, setUsername] = useState(config?.username || '')
+  const [accessKey, setAccessKey] = useState(config?.access_key || '')
+  const [saving, setSaving] = useState(false)
+  const [testing, setTesting] = useState(false)
+  const [testResult, setTestResult] = useState<'success' | 'error' | null>(null)
+  const [testMessage, setTestMessage] = useState('')
+
+  const handleTest = async () => {
+    if (!instanceUrl.trim() || !username.trim() || !accessKey.trim()) {
+      toast.error('Fill in all three fields before testing')
+      return
+    }
+    setTesting(true)
+    setTestResult(null)
+    try {
+      const res = await fetch('/api/crm/test-connection', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          instance_url: instanceUrl.trim(),
+          username: username.trim(),
+          access_key: accessKey.trim(),
+        }),
+      })
+      const data = await res.json()
+      if (res.ok && data.success) {
+        setTestResult('success')
+        setTestMessage(`Connected as ${data.username}`)
+      } else {
+        setTestResult('error')
+        setTestMessage(data.error || 'Connection failed')
+      }
+    } catch {
+      setTestResult('error')
+      setTestMessage('Network error — check the instance URL')
+    }
+    setTesting(false)
+  }
+
+  const handleSave = async () => {
+    if (!instanceUrl.trim()) { toast.error('Instance URL is required'); return }
+    if (!username.trim()) { toast.error('Username is required'); return }
+    if (!accessKey.trim()) { toast.error('Access Key is required'); return }
+    setSaving(true)
+    const vt = {
+      instance_url: instanceUrl.trim(),
+      username: username.trim(),
+      access_key: accessKey.trim(),
+    }
+    const ok = await saveIntegration(clientId, 'vtiger', vt)
+    if (ok) {
+      onSaved(vt)
+      setTestResult(null) // reset test state after save
+    }
+    setSaving(false)
+  }
+
+  return (
+    <Card className="lg:col-span-2">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Database className="h-5 w-5 text-blue-600" />
+            Vtiger CRM
+          </CardTitle>
+          <StatusDot connected={!!config?.instance_url} />
+        </div>
+        <CardDescription>
+          Connect your Vtiger CRM — search leads, log notes, and create new records from WhatsApp and Vibe chat
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Help text */}
+        <div className="rounded-md bg-muted/60 border px-3 py-2.5 space-y-1 text-xs text-muted-foreground">
+          <p className="font-medium text-foreground">Where to find your Access Key</p>
+          <p>In Vtiger: click your name (top right) → <strong>My Profile</strong> → scroll to <strong>Access Credentials</strong> → copy the Access Key.</p>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2 sm:col-span-2">
+            <Label htmlFor="vtiger-url">Instance URL</Label>
+            <Input
+              id="vtiger-url"
+              value={instanceUrl}
+              onChange={(e) => { setInstanceUrl(e.target.value); setTestResult(null) }}
+              placeholder="https://crm.yourcompany.com"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="vtiger-user">Username</Label>
+            <Input
+              id="vtiger-user"
+              value={username}
+              onChange={(e) => { setUsername(e.target.value); setTestResult(null) }}
+              placeholder="admin"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="vtiger-key">Access Key</Label>
+            <PasswordInput
+              id="vtiger-key"
+              value={accessKey}
+              onChange={(v) => { setAccessKey(v); setTestResult(null) }}
+              placeholder="Your Vtiger access key"
+            />
+          </div>
+        </div>
+
+        {/* Test result feedback */}
+        {testResult && (
+          <div className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm ${
+            testResult === 'success'
+              ? 'bg-green-50 text-green-700 border border-green-200'
+              : 'bg-red-50 text-red-700 border border-red-200'
+          }`}>
+            {testResult === 'success'
+              ? <CheckCircle className="h-4 w-4 shrink-0" />
+              : <XCircle className="h-4 w-4 shrink-0" />
+            }
+            <span>{testMessage}</span>
+          </div>
+        )}
+
+        <div className="flex gap-3">
+          <Button
+            variant="outline"
+            onClick={handleTest}
+            disabled={testing || saving}
+            className="flex-1"
+            size="sm"
+          >
+            {testing
+              ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Testing...</>
+              : 'Test Connection'
+            }
+          </Button>
+          <Button
+            onClick={handleSave}
+            disabled={saving || testing}
+            className="flex-1"
+            size="sm"
+          >
+            {saving
+              ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Saving...</>
+              : <><Check className="h-4 w-4 mr-2" />Save CRM Settings</>
+            }
+          </Button>
+        </div>
       </CardContent>
     </Card>
   )

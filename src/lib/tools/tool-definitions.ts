@@ -463,6 +463,93 @@ Generate 2 variations so the user can choose.`,
     },
   },
 
+  // ─── CRM TOOLS ────────────────────────────────────────────────────────────────
+
+  {
+    name: 'crm_search',
+    description: `Search the client's Vtiger CRM for an existing lead or contact by phone number or email.
+Use this when the user asks about a specific person, customer, or lead in their CRM.
+Returns their name, company, status, lead number, and notes if found.
+If not found, returns null — they are not yet in the CRM.`,
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        phone: {
+          type: 'string',
+          description: 'Phone number to search (any format — +27, 027, or 27 prefix all work)',
+        },
+        email: {
+          type: 'string',
+          description: 'Email address to search',
+        },
+      },
+    },
+  },
+
+  {
+    name: 'crm_create_lead',
+    description: `Create a new Lead record in the client's Vtiger CRM.
+Use this when a new prospect is identified and needs to be captured in the CRM.
+firstname and lastname are required. All other fields are optional.`,
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        firstname: { type: 'string', description: 'First name (required)' },
+        lastname: { type: 'string', description: 'Last name (required)' },
+        company: { type: 'string', description: 'Company name' },
+        email: { type: 'string', description: 'Email address' },
+        phone: { type: 'string', description: 'Phone number' },
+        mobile: { type: 'string', description: 'Mobile number' },
+        description: { type: 'string', description: 'Notes or description about this lead' },
+        leadsource: { type: 'string', description: 'Lead source e.g. "Web Site", "WhatsApp", "Referral"' },
+        leadstatus: { type: 'string', description: 'Lead status e.g. "New", "Hot", "In Progress"' },
+      },
+      required: ['firstname', 'lastname'],
+    },
+  },
+
+  {
+    name: 'crm_update_record',
+    description: `Update fields on an existing Lead or Contact in the client's Vtiger CRM.
+Use this when the user asks to change a field on a CRM record — status, description, phone, etc.
+You must have the recordId (full Vtiger ID e.g. "4x123") — get it first from crm_search if needed.`,
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        record_id: {
+          type: 'string',
+          description: 'Full Vtiger record ID e.g. "4x123" — get from crm_search first',
+        },
+        updates: {
+          type: 'object',
+          description: 'Key-value pairs of fields to update e.g. { "leadstatus": "Converted", "description": "..." }',
+        },
+      },
+      required: ['record_id', 'updates'],
+    },
+  },
+
+  {
+    name: 'crm_add_note',
+    description: `Add a note or comment to an existing Lead or Contact in the client's Vtiger CRM.
+Use this to log interactions, follow-up reminders, or any important information about a contact.
+You must have the recordId — get it from crm_search if needed.`,
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        record_id: {
+          type: 'string',
+          description: 'Full Vtiger record ID e.g. "4x123"',
+        },
+        note: {
+          type: 'string',
+          description: 'The note text to add to this record',
+        },
+      },
+      required: ['record_id', 'note'],
+    },
+  },
+
   {
     name: 'update_onboarding_stage',
     description: `Advance the client's onboarding to the next stage.
@@ -557,6 +644,10 @@ export type ToolName =
   | 'generate_image'
   | 'unsplash_search'
   | 'edit_image'
+  | 'crm_search'
+  | 'crm_create_lead'
+  | 'crm_update_record'
+  | 'crm_add_note'
   | 'update_onboarding_stage'
   | 'save_lead_magnet_html'
 
@@ -576,6 +667,10 @@ export const TOOL_LABELS: Record<ToolName, { icon: string; label: string; color:
   generate_image: { icon: '🎨', label: 'Generating AI image', color: 'pink' },
   unsplash_search: { icon: '📷', label: 'Searching Unsplash photos', color: 'teal' },
   edit_image: { icon: '✨', label: 'Editing image with AI', color: 'violet' },
+  crm_search: { icon: '🔎', label: 'Searching CRM', color: 'cyan' },
+  crm_create_lead: { icon: '➕', label: 'Creating CRM lead', color: 'cyan' },
+  crm_update_record: { icon: '✏️', label: 'Updating CRM record', color: 'cyan' },
+  crm_add_note: { icon: '📝', label: 'Adding CRM note', color: 'cyan' },
   update_onboarding_stage: { icon: '✅', label: 'Stage complete', color: 'emerald' },
   save_lead_magnet_html: { icon: '🧩', label: 'Saving HTML to Storage', color: 'indigo' },
 }
