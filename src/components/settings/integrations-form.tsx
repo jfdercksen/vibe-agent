@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import { Globe, Mail, Share2, Workflow, Eye, EyeOff, Loader2, Check, MessageCircle, Database, CheckCircle, XCircle } from 'lucide-react'
+import { Globe, Mail, Share2, Workflow, Eye, EyeOff, Loader2, Check, MessageCircle, Database, CheckCircle, XCircle, Sparkles } from 'lucide-react'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
 import type { IntegrationConfig } from '@/lib/types/database'
@@ -424,17 +424,17 @@ function WhatsAppCard({
   const [accessToken, setAccessToken] = useState(config?.access_token || '')
   const [phoneNumberId, setPhoneNumberId] = useState(config?.phone_number_id || '')
   const [verifyToken, setVerifyToken] = useState(config?.verify_token || '')
-  const [agentPrompt, setAgentPrompt] = useState(
-    config?.agent_prompt ||
-    'You are a helpful customer support assistant. Be friendly, concise, and professional. Answer questions about the business and help customers with their enquiries.'
-  )
+  const [agentPrompt, setAgentPrompt] = useState(config?.agent_prompt || '')
   const [saving, setSaving] = useState(false)
+  const [generating, setGenerating] = useState(false)
+
+  const hasPrompt = !!agentPrompt.trim()
 
   const handleSave = async () => {
     if (!accessToken.trim()) { toast.error('Access Token is required'); return }
     if (!phoneNumberId.trim()) { toast.error('Phone Number ID is required'); return }
     if (!verifyToken.trim()) { toast.error('Verify Token is required'); return }
-    if (!agentPrompt.trim()) { toast.error('Agent Prompt is required'); return }
+    if (!agentPrompt.trim()) { toast.error('Agent Prompt is required — generate one or write your own'); return }
     setSaving(true)
     const wa = {
       access_token: accessToken.trim(),
@@ -445,6 +445,30 @@ function WhatsAppCard({
     const ok = await saveIntegration(clientId, 'whatsapp', wa)
     if (ok) onSaved(wa)
     setSaving(false)
+  }
+
+  const handleGeneratePrompt = async () => {
+    setGenerating(true)
+    try {
+      const res = await fetch('/api/whatsapp/generate-prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clientId }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(`Generation failed: ${data.error || 'Unknown error'}`)
+        return
+      }
+      setAgentPrompt(data.agent_prompt)
+      toast.success(
+        `Agent prompt generated! ${data.pages_crawled > 0 ? `${data.pages_crawled} website pages crawled.` : ''} Review it below and save.`
+      )
+    } catch {
+      toast.error('Network error — could not generate prompt')
+    } finally {
+      setGenerating(false)
+    }
   }
 
   const webhookUrl = typeof window !== 'undefined'
@@ -488,21 +512,55 @@ function WhatsAppCard({
           </div>
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="wa-prompt">Agent Prompt</Label>
+        {/* Agent Prompt section */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="wa-prompt">Agent Prompt</Label>
+            {/* Generate button — only shown when no prompt exists yet */}
+            {!hasPrompt && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleGeneratePrompt}
+                disabled={generating}
+                className="h-7 gap-1.5 text-xs border-green-200 text-green-700 hover:bg-green-50 hover:text-green-800"
+              >
+                {generating
+                  ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Generating...</>
+                  : <><Sparkles className="h-3.5 w-3.5" />Generate with AI</>
+                }
+              </Button>
+            )}
+          </div>
+
+          {/* Generating progress indicator */}
+          {generating && (
+            <div className="rounded-md bg-green-50 border border-green-200 px-3 py-2.5 text-xs text-green-700 space-y-1">
+              <p className="font-medium">🤖 Generating your WhatsApp agent prompt...</p>
+              <p className="text-green-600">Crawling website + structuring knowledge + writing prompt. This takes 1-3 minutes.</p>
+            </div>
+          )}
+
           <Textarea
             id="wa-prompt"
             value={agentPrompt}
             onChange={(e) => setAgentPrompt(e.target.value)}
-            placeholder="You are a helpful customer support assistant for [Business Name]..."
-            className="min-h-[120px] text-sm"
+            placeholder={hasPrompt ? '' : 'Click "Generate with AI" above to auto-generate a prompt from your website and brand voice — or write your own here.'}
+            className="min-h-[180px] text-sm"
           />
-          <p className="text-[11px] text-muted-foreground">
-            This is Claude&apos;s persona and instructions for responding to WhatsApp customers. Include business name, policies, tone, and any specific knowledge.
-          </p>
+
+          {hasPrompt ? (
+            <p className="text-[11px] text-muted-foreground">
+              ✅ Agent prompt is set ({agentPrompt.length.toLocaleString()} chars). You can edit it directly above, then save.
+            </p>
+          ) : (
+            <p className="text-[11px] text-muted-foreground">
+              This is Claude&apos;s complete instructions for responding to WhatsApp customers. Use &quot;Generate with AI&quot; to create one from your website and brand data, or write your own.
+            </p>
+          )}
         </div>
 
-        <Button onClick={handleSave} disabled={saving} className="w-full" size="sm">
+        <Button onClick={handleSave} disabled={saving || generating} className="w-full" size="sm">
           {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
           Save WhatsApp Settings
         </Button>

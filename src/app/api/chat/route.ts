@@ -311,6 +311,36 @@ async function executeTool(
       return { success: true, comment_id: result.comment_id, message: 'Note added to CRM record' }
     }
 
+    case 'generate_whatsapp_prompt': {
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001'
+      const res = await fetch(`${baseUrl}/api/whatsapp/generate-prompt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clientId }),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || 'WhatsApp prompt generation failed')
+      }
+      const result = await res.json() as {
+        success: boolean
+        agent_prompt: string
+        pages_crawled: number
+        had_website: boolean
+        had_brand_voice: boolean
+        had_positioning: boolean
+      }
+      return {
+        success: true,
+        pages_crawled: result.pages_crawled,
+        had_website: result.had_website,
+        had_brand_voice: result.had_brand_voice,
+        had_positioning: result.had_positioning,
+        prompt_length: result.agent_prompt?.length || 0,
+        message: `WhatsApp agent prompt generated and saved to Settings → Integrations → WhatsApp. It's ready to use immediately. ${result.pages_crawled > 0 ? `${result.pages_crawled} website pages were crawled and baked into the knowledge base.` : ''} ${!result.had_brand_voice ? 'Note: No brand voice found — the tone section is based on general business info. Run Brand Voice skill for a more accurate persona.' : ''} ${!result.had_positioning ? 'Note: No positioning angles found — the value proposition section is generic. Run Positioning Angles skill to strengthen it.' : ''}`,
+      }
+    }
+
     case 'update_onboarding_stage':
       await updateClientOnboardingStage(
         clientId,
@@ -702,6 +732,10 @@ function getToolSummary(
       return `Updated CRM record: ${input.record_id}`
     case 'crm_add_note':
       return `Note added to CRM record: ${input.record_id}`
+    case 'generate_whatsapp_prompt': {
+      const r = result as { pages_crawled?: number; prompt_length?: number }
+      return `WhatsApp agent prompt generated — ${r?.pages_crawled || 0} pages crawled, ${r?.prompt_length || 0} chars. Saved to Settings.`
+    }
     case 'update_onboarding_stage':
       return `Advanced to Stage ${input.stage}${input.completed ? ' — Onboarding Complete!' : ''}`
     case 'save_lead_magnet_html': {

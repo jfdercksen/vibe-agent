@@ -128,6 +128,7 @@ const SKILL_TRIGGERS: Record<string, string[]> = {
   'ai-talking-head':          ['talking head', 'ugc video', 'spokesperson', 'video persona', 'face to camera'],
   'frontend-design':          ['html page', 'css', 'build page', 'design page', 'page build', 'frontend'],
   'interactive-lead-magnets': ['calculator', 'quiz', 'interactive tool', 'self-contained html', 'roi calculator'],
+  'whatsapp-agent':           ['whatsapp agent', 'whatsapp prompt', 'agent prompt', 'chatbot prompt', 'whatsapp chatbot', 'generate prompt', 'build the prompt'],
 }
 
 function selectSkillsForRequest(userMessage: string, allSkills: LoadedSkill[]): LoadedSkill[] {
@@ -527,6 +528,31 @@ If this client has Vtiger CRM configured, you have direct CRM access via these t
 - "Update the lead status to Converted" → crm_update_record
 - "Add a note to this contact" → crm_add_note
 - "Create a lead for this new enquiry" → crm_create_lead
+
+---
+
+## WhatsApp Agent Prompt Generator
+You can generate a comprehensive WhatsApp AI agent system prompt for this client using:
+- **generate_whatsapp_prompt** — Crawls the client's website, uses their brand voice and positioning data, and generates a complete, knowledge-baked system prompt. Saves automatically to Settings → Integrations → WhatsApp.
+
+**When to use:**
+- User says "build the WhatsApp agent prompt", "generate the agent prompt", "create the chatbot prompt", or similar
+- User wants to set up or improve their WhatsApp AI agent
+
+**Important — tell the user upfront:**
+"This will take 1-3 minutes — I need to crawl your website and run two AI passes to structure the knowledge base and generate the prompt."
+
+**What it produces:**
+A comprehensive prompt including: agent identity, full knowledge base (from website), tone guidelines, customer handling (new vs returning), lead qualification steps, guardrails, handover triggers, and CRM tool instructions — all baked in at generation time.
+
+**After generation:**
+Inform the user the prompt has been saved and they can view/edit it in Settings → Integrations → WhatsApp Agent Prompt. They should review it and click Save to confirm.
+
+**Example trigger phrases:**
+- "Build the WhatsApp agent prompt for this client"
+- "Generate the agent prompt"
+- "Create the chatbot prompt"
+- "Set up the WhatsApp AI agent"
 
 ---
 

@@ -550,6 +550,30 @@ You must have the recordId — get it from crm_search if needed.`,
     },
   },
 
+  // ─── WHATSAPP TOOLS ───────────────────────────────────────────────────────────
+
+  {
+    name: 'generate_whatsapp_prompt',
+    description: `Generate a comprehensive WhatsApp AI agent system prompt for the current client.
+This crawls the client's website, uses their brand voice and positioning data, and generates
+a complete, customised system prompt ready to use — knowledge base baked in.
+
+Use this when the user says things like:
+- "Build the WhatsApp agent prompt"
+- "Generate the agent prompt"
+- "Create the WhatsApp chatbot prompt"
+- "Set up the WhatsApp agent"
+
+The prompt will be automatically saved to the client's WhatsApp integration settings.
+It includes: identity, knowledge base, tone, customer handling, lead qualification, guardrails, handover triggers, and CRM instructions.
+
+This operation takes 1-3 minutes (website crawl + AI generation). Tell the user upfront.`,
+    input_schema: {
+      type: 'object' as const,
+      properties: {},
+    },
+  },
+
   {
     name: 'update_onboarding_stage',
     description: `Advance the client's onboarding to the next stage.
@@ -648,6 +672,7 @@ export type ToolName =
   | 'crm_create_lead'
   | 'crm_update_record'
   | 'crm_add_note'
+  | 'generate_whatsapp_prompt'
   | 'update_onboarding_stage'
   | 'save_lead_magnet_html'
 
@@ -671,6 +696,7 @@ export const TOOL_LABELS: Record<ToolName, { icon: string; label: string; color:
   crm_create_lead: { icon: '➕', label: 'Creating CRM lead', color: 'cyan' },
   crm_update_record: { icon: '✏️', label: 'Updating CRM record', color: 'cyan' },
   crm_add_note: { icon: '📝', label: 'Adding CRM note', color: 'cyan' },
+  generate_whatsapp_prompt: { icon: '🤖', label: 'Generating WhatsApp agent prompt', color: 'green' },
   update_onboarding_stage: { icon: '✅', label: 'Stage complete', color: 'emerald' },
   save_lead_magnet_html: { icon: '🧩', label: 'Saving HTML to Storage', color: 'indigo' },
 }
