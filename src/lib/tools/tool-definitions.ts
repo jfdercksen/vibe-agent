@@ -550,6 +550,50 @@ You must have the recordId — get it from crm_search if needed.`,
     },
   },
 
+  // ─── MODEL SWITCHING ──────────────────────────────────────────────────────────
+
+  {
+    name: 'switch_model',
+    description: `Switch the Claude model used for the remainder of this conversation.
+Call this FIRST (before any other tool) whenever you can judge the task complexity.
+
+Available models — choose based on what the task actually needs:
+
+• claude-haiku-4-5 — Fast, cheap, accurate for simple tasks.
+  Use for: CRM lookups, saving/updating records, quick Q&A, formatting output,
+  loading existing content, onboarding stage updates, any single-step operation.
+
+• claude-sonnet-4-5 — Balanced power and speed.
+  Use for: moderate content tasks (single social post, short email, editing existing
+  copy), multi-step pipelines that don't need heavy research.
+
+• claude-opus-4-5 — Most capable. Use when quality matters most.
+  Use for: deep market research, full brand voice creation, positioning angles,
+  long-form SEO articles, email sequences, campaign strategy, complex multi-tool
+  workflows, anything where nuance and creativity are critical.
+
+RULES:
+- Default is Opus. Only switch DOWN when you are confident the task is simple.
+- Switch UP if you started on Haiku/Sonnet and realise the task is more complex.
+- You can switch multiple times in one conversation.
+- Always call switch_model as the VERY FIRST tool in your response when switching.`,
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        model: {
+          type: 'string',
+          enum: ['claude-haiku-4-5', 'claude-sonnet-4-5', 'claude-opus-4-5'],
+          description: 'The Claude model to use for subsequent API calls in this session',
+        },
+        reason: {
+          type: 'string',
+          description: 'One-line reason for switching — shown in the UI (e.g. "Simple CRM lookup — using Haiku")',
+        },
+      },
+      required: ['model', 'reason'],
+    },
+  },
+
   // ─── WHATSAPP TOOLS ───────────────────────────────────────────────────────────
 
   {
@@ -672,6 +716,7 @@ export type ToolName =
   | 'crm_create_lead'
   | 'crm_update_record'
   | 'crm_add_note'
+  | 'switch_model'
   | 'generate_whatsapp_prompt'
   | 'update_onboarding_stage'
   | 'save_lead_magnet_html'
@@ -696,6 +741,7 @@ export const TOOL_LABELS: Record<ToolName, { icon: string; label: string; color:
   crm_create_lead: { icon: '➕', label: 'Creating CRM lead', color: 'cyan' },
   crm_update_record: { icon: '✏️', label: 'Updating CRM record', color: 'cyan' },
   crm_add_note: { icon: '📝', label: 'Adding CRM note', color: 'cyan' },
+  switch_model: { icon: '⚡', label: 'Switching model', color: 'violet' },
   generate_whatsapp_prompt: { icon: '🤖', label: 'Generating WhatsApp agent prompt', color: 'green' },
   update_onboarding_stage: { icon: '✅', label: 'Stage complete', color: 'emerald' },
   save_lead_magnet_html: { icon: '🧩', label: 'Saving HTML to Storage', color: 'indigo' },

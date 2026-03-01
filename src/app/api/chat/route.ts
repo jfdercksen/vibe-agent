@@ -464,10 +464,12 @@ export async function POST(request: NextRequest) {
           let continueLoop = true
           let currentMessages = messages
           const failedTools: Array<{ toolName: string; error: string }> = []
+          // Dynamic model — Claude can switch via switch_model tool; starts on Opus
+          let currentModel = 'claude-opus-4-5'
 
           while (continueLoop) {
             const response = await withRetry(() => anthropic.messages.create({
-              model: 'claude-opus-4-5',
+              model: currentModel,
               max_tokens: 8096,
               system: systemPrompt,
               tools: ALL_TOOLS,
@@ -556,6 +558,23 @@ export async function POST(request: NextRequest) {
               for (const toolBlock of toolUseBlocks) {
                 const toolName = toolBlock.name as ToolName
                 const toolInput = toolBlock.input as Record<string, unknown>
+
+                // ── Model switching — handled here (not in executeTool) so it can
+                //    mutate currentModel used by the next anthropic.messages.create call
+                if (toolName === 'switch_model') {
+                  const newModel = toolInput.model as string
+                  const reason = (toolInput.reason as string) || ''
+                  const prevModel = currentModel
+                  currentModel = newModel
+                  const summary = `${prevModel.split('-').slice(-3, -1).join('-')} → ${newModel.split('-').slice(-3, -1).join('-')}: ${reason}`
+                  send({ type: 'tool_result', toolName, toolId: toolBlock.id, summary })
+                  toolResults.push({
+                    type: 'tool_result',
+                    tool_use_id: toolBlock.id,
+                    content: JSON.stringify({ success: true, model: newModel, reason }),
+                  })
+                  continue
+                }
 
                 try {
                   // Execute the tool
@@ -740,6 +759,11 @@ function getToolSummary(
     case 'generate_whatsapp_prompt': {
       const r = result as { pages_crawled?: number; prompt_length?: number }
       return `WhatsApp agent prompt generated — ${r?.pages_crawled || 0} pages crawled, ${r?.prompt_length || 0} chars. Saved to Settings.`
+    }
+    case 'switch_model': {
+      const from = (input._prevModel as string | undefined)?.split('-')[2] || 'opus'
+      const to = (input.model as string)?.split('-')[2] || input.model
+      return `Switched to ${to}: ${input.reason || ''}`
     }
     case 'update_onboarding_stage':
       return `Advanced to Stage ${input.stage}${input.completed ? ' — Onboarding Complete!' : ''}`
