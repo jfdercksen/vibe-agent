@@ -246,13 +246,18 @@ async function executeTool(
           email: toolInput.email || undefined,
         }),
       })
-      if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.error || 'CRM search failed')
+      const rawText = await res.text()
+      let parsed: Record<string, unknown>
+      try {
+        parsed = JSON.parse(rawText)
+      } catch {
+        throw new Error(`CRM search: unexpected response from server (HTTP ${res.status}): "${rawText.slice(0, 120)}"`)
       }
-      const result = await res.json()
-      return result.contact
-        ? { found: true, contact: result.contact }
+      if (!res.ok) {
+        throw new Error((parsed.error as string) || `CRM search failed (HTTP ${res.status})`)
+      }
+      return parsed.contact
+        ? { found: true, contact: parsed.contact }
         : { found: false, message: 'No matching lead or contact found in CRM' }
     }
 

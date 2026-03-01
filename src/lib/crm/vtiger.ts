@@ -57,9 +57,62 @@ function apiUrl(instanceUrl: string): string {
   return `${base}/webservice.php`
 }
 
+/**
+ * Safe JSON parser — reads the response body as text first, then parses.
+ * Throws a descriptive error if the body is empty or not valid JSON
+ * (e.g. Vtiger returned an HTML error page or a blank response).
+ */
+async function safeJson<T>(res: Response, context: string): Promise<T> {
+  const text = await res.text()
+  if (!text || text.trim() === '') {
+    throw new Error(`Vtiger ${context}: server returned an empty response (HTTP ${res.status}). Check the instance URL and server health.`)
+  }
+  try {
+    return JSON.parse(text) as T
+  } catch {
+    const preview = text.slice(0, 120).replace(/\s+/g, ' ')
+    throw new Error(`Vtiger ${context}: response was not valid JSON (HTTP ${res.status}). Server returned: "${preview}"`)
+  }
+}
+
+/**
+ * Normalize a phone number into all common variants for Vtiger queries.
+ * Handles:
+ *   +27827728254  → international with plus
+ *   27827728254   → international without plus
+ *   0827728254    → South African local format
+ *   0082-772-8254 → various formats with dashes/spaces
+ * Returns { international, withPlus, local } so the query can match any stored format.
+ */
+function normalizePhone(phone: string): { international: string; withPlus: string; local: string } {
+  // Strip whitespace, dashes, parentheses, dots
+  const cleaned = phone.replace(/[\s\-().]/g, '')
+
+  let digits: string  // core digits without country code
+
+  if (cleaned.startsWith('+27') && cleaned.length >= 11) {
+    // +27827728254 → digits = "827728254"
+    digits = cleaned.substring(3)
+  } else if (cleaned.startsWith('27') && cleaned.length >= 11) {
+    // 27827728254 → digits = "827728254"
+    digits = cleaned.substring(2)
+  } else if (cleaned.startsWith('0') && cleaned.length >= 9) {
+    // 0827728254 → digits = "827728254"
+    digits = cleaned.substring(1)
+  } else {
+    // Unknown format — use as-is for all variants
+    digits = cleaned
+  }
+
+  return {
+    international: `27${digits}`,     // 27827728254
+    withPlus:      `+27${digits}`,    // +27827728254
+    local:         `0${digits}`,      // 0827728254
+  }
+}
+
 // ── Session management ─────────────────────────────────────────────────────────
 // A fresh session is obtained on every request (no caching).
-// Vtiger sessions typically last 1 hour — caching can be added later if needed.
 
 async function getSession(config: VtigerConfig): Promise<string> {
   const url = apiUrl(config.instance_url)
@@ -71,18 +124,18 @@ async function getSession(config: VtigerConfig): Promise<string> {
   )
 
   if (!challengeRes.ok) {
-    throw new Error(`Vtiger getchallenge failed: HTTP ${challengeRes.status}`)
+    throw new Error(`Vtiger getchallenge failed: HTTP ${challengeRes.status} at ${url}`)
   }
 
-  const challengeData = await challengeRes.json() as {
+  const challengeData = await safeJson<{
     success: boolean
     result?: { token: string }
     error?: { message: string }
-  }
+  }>(challengeRes, 'getchallenge')
 
   if (!challengeData.success || !challengeData.result?.token) {
     throw new Error(
-      `Vtiger getchallenge error: ${challengeData.error?.message || 'Unknown error'}`
+      `Vtiger getchallenge error: ${challengeData.error?.message || 'No token returned'}`
     )
   }
 
@@ -106,15 +159,15 @@ async function getSession(config: VtigerConfig): Promise<string> {
     throw new Error(`Vtiger login failed: HTTP ${loginRes.status}`)
   }
 
-  const loginData = await loginRes.json() as {
+  const loginData = await safeJson<{
     success: boolean
     result?: { sessionName: string }
     error?: { message: string }
-  }
+  }>(loginRes, 'login')
 
   if (!loginData.success || !loginData.result?.sessionName) {
     throw new Error(
-      `Vtiger login error: ${loginData.error?.message || 'Invalid credentials'}`
+      `Vtiger login error: ${loginData.error?.message || 'Invalid credentials or access key'}`
     )
   }
 
@@ -125,8 +178,8 @@ async function getSession(config: VtigerConfig): Promise<string> {
 
 /**
  * Search for an existing contact by phone number.
- * Checks Leads first, then Contacts (same logic as the original n8n workflows).
- * Handles +27, 027, and 27 phone number format variations.
+ * Checks Leads first, then Contacts.
+ * Handles all common SA phone formats: +27..., 27..., 0...
  */
 export async function searchByPhone(
   config: VtigerConfig,
@@ -134,21 +187,18 @@ export async function searchByPhone(
 ): Promise<VtigerContact | null> {
   const sessionName = await getSession(config)
   const url = apiUrl(config.instance_url)
+  const { international, withPlus, local } = normalizePhone(phone)
 
-  // Normalize phone — strip leading + and leading zeros
-  const stripped = phone.replace(/^\+/, '')        // "27785676780"
-  const withZero = `0${stripped.substring(2)}`     // "0785676780"
-  const withPlus = `+${stripped}`                  // "+27785676780"
-
-  // Try Leads first
-  const leadQuery = `SELECT * FROM Leads WHERE mobile = '${stripped}' OR mobile = '${withPlus}' OR mobile = '${withZero}' LIMIT 1;`
+  // Try Leads first — search both 'phone' and 'mobile' columns
+  const leadQuery = `SELECT * FROM Leads WHERE mobile = '${international}' OR mobile = '${withPlus}' OR mobile = '${local}' OR phone = '${international}' OR phone = '${withPlus}' OR phone = '${local}' LIMIT 1;`
   const leadRes = await fetch(
     `${url}?operation=query&sessionName=${encodeURIComponent(sessionName)}&query=${encodeURIComponent(leadQuery)}`
   )
-  const leadData = await leadRes.json() as {
+  const leadData = await safeJson<{
     success: boolean
     result?: Record<string, string>[]
-  }
+    error?: { message: string }
+  }>(leadRes, 'query(Leads)')
 
   if (leadData.success && leadData.result && leadData.result.length > 0) {
     const r = leadData.result[0]
@@ -169,15 +219,16 @@ export async function searchByPhone(
     }
   }
 
-  // Try Contacts if not in Leads
-  const contactQuery = `SELECT * FROM Contacts WHERE mobile = '${stripped}' OR mobile = '${withPlus}' OR mobile = '${withZero}' LIMIT 1;`
+  // Try Contacts
+  const contactQuery = `SELECT * FROM Contacts WHERE mobile = '${international}' OR mobile = '${withPlus}' OR mobile = '${local}' OR phone = '${international}' OR phone = '${withPlus}' OR phone = '${local}' LIMIT 1;`
   const contactRes = await fetch(
     `${url}?operation=query&sessionName=${encodeURIComponent(sessionName)}&query=${encodeURIComponent(contactQuery)}`
   )
-  const contactData = await contactRes.json() as {
+  const contactData = await safeJson<{
     success: boolean
     result?: Record<string, string>[]
-  }
+    error?: { message: string }
+  }>(contactRes, 'query(Contacts)')
 
   if (contactData.success && contactData.result && contactData.result.length > 0) {
     const r = contactData.result[0]
@@ -208,16 +259,18 @@ export async function searchByEmail(
 ): Promise<VtigerContact | null> {
   const sessionName = await getSession(config)
   const url = apiUrl(config.instance_url)
+  const safeEmail = email.replace(/'/g, "''")
 
   // Try Leads first
-  const leadQuery = `SELECT * FROM Leads WHERE email = '${email.replace(/'/g, "''")}' LIMIT 1;`
+  const leadQuery = `SELECT * FROM Leads WHERE email = '${safeEmail}' LIMIT 1;`
   const leadRes = await fetch(
     `${url}?operation=query&sessionName=${encodeURIComponent(sessionName)}&query=${encodeURIComponent(leadQuery)}`
   )
-  const leadData = await leadRes.json() as {
+  const leadData = await safeJson<{
     success: boolean
     result?: Record<string, string>[]
-  }
+    error?: { message: string }
+  }>(leadRes, 'query(Leads by email)')
 
   if (leadData.success && leadData.result && leadData.result.length > 0) {
     const r = leadData.result[0]
@@ -239,14 +292,15 @@ export async function searchByEmail(
   }
 
   // Try Contacts
-  const contactQuery = `SELECT * FROM Contacts WHERE email = '${email.replace(/'/g, "''")}' LIMIT 1;`
+  const contactQuery = `SELECT * FROM Contacts WHERE email = '${safeEmail}' LIMIT 1;`
   const contactRes = await fetch(
     `${url}?operation=query&sessionName=${encodeURIComponent(sessionName)}&query=${encodeURIComponent(contactQuery)}`
   )
-  const contactData = await contactRes.json() as {
+  const contactData = await safeJson<{
     success: boolean
     result?: Record<string, string>[]
-  }
+    error?: { message: string }
+  }>(contactRes, 'query(Contacts by email)')
 
   if (contactData.success && contactData.result && contactData.result.length > 0) {
     const r = contactData.result[0]
@@ -270,7 +324,6 @@ export async function searchByEmail(
 
 /**
  * Run a custom VQL query. Returns raw Vtiger result rows.
- * Example: query("SELECT * FROM Leads WHERE leadstatus = 'Hot' LIMIT 20;")
  */
 export async function runQuery(
   config: VtigerConfig,
@@ -282,11 +335,11 @@ export async function runQuery(
   const res = await fetch(
     `${url}?operation=query&sessionName=${encodeURIComponent(sessionName)}&query=${encodeURIComponent(query)}`
   )
-  const data = await res.json() as {
+  const data = await safeJson<{
     success: boolean
     result?: Record<string, unknown>[]
     error?: { message: string }
-  }
+  }>(res, 'query')
 
   if (!data.success) {
     throw new Error(`Vtiger query error: ${data.error?.message || 'Unknown error'}`)
@@ -333,11 +386,11 @@ export async function createLead(
     body: body.toString(),
   })
 
-  const result = await res.json() as {
+  const result = await safeJson<{
     success: boolean
     result?: { id: string; lead_no: string }
     error?: { message: string }
-  }
+  }>(res, 'create(Lead)')
 
   if (!result.success || !result.result?.id) {
     throw new Error(`Vtiger createLead error: ${result.error?.message || 'Unknown error'}`)
@@ -350,9 +403,7 @@ export async function createLead(
 
 /**
  * Update any fields on an existing Vtiger record.
- * The element must include the record's `id` field.
- * Retrieve the full record first if you only want to update a few fields
- * (Vtiger's update replaces the whole element).
+ * Retrieves the full record first to avoid clobbering existing fields.
  */
 export async function updateRecord(
   config: VtigerConfig,
@@ -362,15 +413,15 @@ export async function updateRecord(
   const sessionName = await getSession(config)
   const url = apiUrl(config.instance_url)
 
-  // First retrieve the full record so we don't clobber existing fields
+  // Retrieve the full record first
   const retrieveRes = await fetch(
     `${url}?operation=retrieve&sessionName=${encodeURIComponent(sessionName)}&id=${encodeURIComponent(recordId)}`
   )
-  const retrieveData = await retrieveRes.json() as {
+  const retrieveData = await safeJson<{
     success: boolean
     result?: Record<string, unknown>
     error?: { message: string }
-  }
+  }>(retrieveRes, 'retrieve')
 
   if (!retrieveData.success || !retrieveData.result) {
     throw new Error(`Vtiger retrieve error: ${retrieveData.error?.message || 'Record not found'}`)
@@ -391,11 +442,11 @@ export async function updateRecord(
     body: body.toString(),
   })
 
-  const updateData = await updateRes.json() as {
+  const updateData = await safeJson<{
     success: boolean
     result?: Record<string, unknown>
     error?: { message: string }
-  }
+  }>(updateRes, 'update')
 
   if (!updateData.success || !updateData.result) {
     throw new Error(`Vtiger update error: ${updateData.error?.message || 'Unknown error'}`)
@@ -408,11 +459,10 @@ export async function updateRecord(
 
 /**
  * Add a comment/note to any Vtiger record (Lead, Contact, etc.)
- * Uses the ModComments module which is available on all entities.
  */
 export async function addNote(
   config: VtigerConfig,
-  recordId: string,   // e.g. "4x123" (the full Vtiger ID including module prefix)
+  recordId: string,
   noteText: string
 ): Promise<{ id: string }> {
   const sessionName = await getSession(config)
@@ -436,11 +486,11 @@ export async function addNote(
     body: body.toString(),
   })
 
-  const result = await res.json() as {
+  const result = await safeJson<{
     success: boolean
     result?: { id: string }
     error?: { message: string }
-  }
+  }>(res, 'create(ModComments)')
 
   if (!result.success || !result.result?.id) {
     throw new Error(`Vtiger addNote error: ${result.error?.message || 'Unknown error'}`)
@@ -453,9 +503,9 @@ export async function addNote(
 
 /**
  * Verify credentials by attempting to get a session.
- * Returns true if successful, throws with a descriptive message if not.
+ * Throws with a descriptive message on failure.
  */
 export async function testConnection(config: VtigerConfig): Promise<{ success: true; username: string }> {
-  await getSession(config)   // throws on failure
+  await getSession(config)   // throws on failure with descriptive message
   return { success: true, username: config.username }
 }
