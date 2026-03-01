@@ -20,6 +20,34 @@ import {
   checkKeywordsExist,
   ContentTable,
 } from '@/lib/tools/supabase-tools'
+import { createAdminClient } from '@/lib/supabase/server'
+import {
+  searchByPhone,
+  searchByEmail,
+  createLead,
+  updateRecord,
+  addNote,
+  type VtigerConfig,
+} from '@/lib/crm/vtiger'
+import type { IntegrationConfig } from '@/lib/types/database'
+
+// Load the Vtiger config for a client directly from Supabase (no HTTP hop)
+async function getVtigerConfig(clientId: string): Promise<VtigerConfig> {
+  const supabase = createAdminClient()
+  const { data, error } = await supabase
+    .from('clients')
+    .select('integrations')
+    .eq('id', clientId)
+    .single()
+
+  if (error || !data) throw new Error('Client not found')
+
+  const vt = (data.integrations as IntegrationConfig)?.vtiger
+  if (!vt?.instance_url || !vt?.username || !vt?.access_key) {
+    throw new Error('Vtiger CRM is not configured for this client. Add credentials in Settings → Integrations → Vtiger CRM.')
+  }
+  return vt as VtigerConfig
+}
 
 // Instantiate inside request handler — not at module level — so env vars are loaded
 function getAnthropic() {
@@ -236,84 +264,55 @@ async function executeTool(
     }
 
     case 'crm_search': {
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001'
-      const res = await fetch(`${baseUrl}/api/crm/search`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          clientId,
-          phone: toolInput.phone || undefined,
-          email: toolInput.email || undefined,
-        }),
-      })
-      const rawText = await res.text()
-      let parsed: Record<string, unknown>
-      try {
-        parsed = JSON.parse(rawText)
-      } catch {
-        throw new Error(`CRM search: unexpected response from server (HTTP ${res.status}): "${rawText.slice(0, 120)}"`)
+      // Call Vtiger directly — no internal HTTP hop (avoids 405/network errors on Vercel)
+      const vtigerConfig = await getVtigerConfig(clientId)
+      const contact = toolInput.phone
+        ? await searchByPhone(vtigerConfig, toolInput.phone as string)
+        : toolInput.email
+          ? await searchByEmail(vtigerConfig, toolInput.email as string)
+          : null
+      if (contact === null && !toolInput.phone && !toolInput.email) {
+        throw new Error('Provide phone or email to search the CRM')
       }
-      if (!res.ok) {
-        throw new Error((parsed.error as string) || `CRM search failed (HTTP ${res.status})`)
-      }
-      return parsed.contact
-        ? { found: true, contact: parsed.contact }
+      return contact
+        ? { found: true, contact }
         : { found: false, message: 'No matching lead or contact found in CRM' }
     }
 
     case 'crm_create_lead': {
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001'
-      const res = await fetch(`${baseUrl}/api/crm/create-lead`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          clientId,
-          data: toolInput,
-        }),
+      const vtigerConfig = await getVtigerConfig(clientId)
+      const result = await createLead(vtigerConfig, {
+        firstname: toolInput.firstname as string,
+        lastname: toolInput.lastname as string,
+        company: toolInput.company as string | undefined,
+        email: toolInput.email as string | undefined,
+        phone: toolInput.phone as string | undefined,
+        mobile: toolInput.mobile as string | undefined,
+        description: toolInput.description as string | undefined,
+        leadsource: (toolInput.leadsource as string | undefined) || 'WhatsApp',
+        leadstatus: (toolInput.leadstatus as string | undefined) || 'New',
       })
-      if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.error || 'Create lead failed')
-      }
-      const result = await res.json()
       return { success: true, id: result.id, lead_no: result.lead_no, message: `Lead created: ${result.lead_no}` }
     }
 
     case 'crm_update_record': {
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001'
-      const res = await fetch(`${baseUrl}/api/crm/update-record`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          clientId,
-          recordId: toolInput.record_id,
-          updates: toolInput.updates,
-        }),
-      })
-      if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.error || 'Update record failed')
-      }
+      const vtigerConfig = await getVtigerConfig(clientId)
+      await updateRecord(
+        vtigerConfig,
+        toolInput.record_id as string,
+        toolInput.updates as Record<string, unknown>
+      )
       return { success: true, message: 'Record updated successfully' }
     }
 
     case 'crm_add_note': {
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001'
-      const res = await fetch(`${baseUrl}/api/crm/add-note`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          clientId,
-          recordId: toolInput.record_id,
-          note: toolInput.note,
-        }),
-      })
-      if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.error || 'Add note failed')
-      }
-      const result = await res.json()
-      return { success: true, comment_id: result.comment_id, message: 'Note added to CRM record' }
+      const vtigerConfig = await getVtigerConfig(clientId)
+      const result = await addNote(
+        vtigerConfig,
+        toolInput.record_id as string,
+        toolInput.note as string
+      )
+      return { success: true, comment_id: result.id, message: 'Note added to CRM record' }
     }
 
     case 'generate_whatsapp_prompt': {
