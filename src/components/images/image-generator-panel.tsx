@@ -58,69 +58,69 @@ const USE_CASES: Array<{ value: UseCase; label: string; description: string; ico
   { value: 'logo',           label: 'Logo/Icon',      description: 'Brand marks & icons',      icon: '✨' },
 ]
 
-// Which use cases use Nano Banana Pro (Google Gemini 3 Pro) — show badge
-const NANO_BANANA_CASES: Set<UseCase> = new Set(['general', 'product_photo', 'blog_header', 'ad_creative'])
-
-// Default model per use case
+// Default model per use case (matches backend MODEL_MAP — Kie.ai as default)
 const DEFAULT_MODEL: Record<UseCase, string> = {
-  general:        'fal-ai/nano-banana-pro',
-  product_photo:  'fal-ai/nano-banana-pro',
-  social_graphic: 'ideogram-ai/ideogram-v3-turbo',
-  blog_header:    'fal-ai/nano-banana-pro',
-  ad_creative:    'fal-ai/nano-banana-pro',
+  general:        'flux-2/pro-text-to-image',
+  product_photo:  'flux-2/pro-text-to-image',
+  social_graphic: 'gpt-image/1.5-text-to-image',
+  blog_header:    'flux-2/pro-text-to-image',
+  ad_creative:    'nano-banana-2',
   logo:           'recraft-ai/recraft-v4',
 }
 
 const MODEL_LABELS: Record<UseCase, string> = {
-  general:        'Nano Banana Pro',
-  product_photo:  'Nano Banana Pro',
-  social_graphic: 'Ideogram V3 Turbo',
-  blog_header:    'Nano Banana Pro',
-  ad_creative:    'Nano Banana Pro',
+  general:        'Flux-2 Pro',
+  product_photo:  'Flux-2 Pro',
+  social_graphic: 'GPT Image 1.5',
+  blog_header:    'Flux-2 Pro',
+  ad_creative:    'Nano Banana 2',
   logo:           'Recraft V4',
 }
 
 const MODEL_DESCRIPTIONS: Record<UseCase, string> = {
-  general:        'Google Gemini 3 Pro Image — highest quality, best all-round',
-  product_photo:  'Google Gemini 3 Pro Image — photorealistic studio shots',
-  social_graphic: 'Ideogram V3 Turbo — best for text-on-image & social graphics',
-  blog_header:    'Google Gemini 3 Pro Image — wide editorial imagery (16:9)',
-  ad_creative:    'Google Gemini 3 Pro Image — premium portrait ad creative (4:5)',
-  logo:           'Recraft V4 — logos, brand marks & scalable vectors',
+  general:        'Photorealistic, great for products & lifestyle',
+  product_photo:  'Clean product shots with studio lighting',
+  social_graphic: 'Best text-on-image accuracy for social graphics',
+  blog_header:    'Wide editorial imagery (16:9)',
+  ad_creative:    'UGC-style lifestyle shots for ads (4:5)',
+  logo:           'Logos, brand marks & scalable vectors',
 }
 
-// Alternative models per use case for model picker
-const ALTERNATIVE_MODELS: Record<UseCase, Array<{ id: string; label: string; provider: string }>> = {
+// Alternative models per use case for model picker (no provider/platform names shown)
+const ALTERNATIVE_MODELS: Record<UseCase, Array<{ id: string; label: string }>> = {
   general: [
-    { id: 'fal-ai/nano-banana-pro',           label: 'Nano Banana Pro ⭐',  provider: 'fal.ai' },
-    { id: 'google/imagen-4-ultra',             label: 'Imagen 4 Ultra',      provider: 'Replicate' },
-    { id: 'google/imagen-4',                   label: 'Imagen 4',            provider: 'Replicate' },
-    { id: 'black-forest-labs/flux-2-pro',      label: 'FLUX 2 Pro',          provider: 'Replicate' },
+    { id: 'flux-2/pro-text-to-image',    label: 'Flux-2 Pro ⭐' },
+    { id: 'nano-banana-2',               label: 'Nano Banana 2' },
+    { id: 'flux-2/flex-text-to-image',   label: 'Flux-2 Flex (draft)' },
+    { id: 'seedream/4.5-text-to-image',  label: 'Seedream 4.5' },
+    { id: 'fal-ai/nano-banana-pro',      label: 'Nano Banana Pro (Premium)' },
   ],
   product_photo: [
-    { id: 'fal-ai/nano-banana-pro',           label: 'Nano Banana Pro ⭐',  provider: 'fal.ai' },
-    { id: 'google/imagen-4-ultra',             label: 'Imagen 4 Ultra',      provider: 'Replicate' },
-    { id: 'black-forest-labs/flux-2-pro',      label: 'FLUX 2 Pro',          provider: 'Replicate' },
+    { id: 'flux-2/pro-text-to-image',    label: 'Flux-2 Pro ⭐' },
+    { id: 'nano-banana-2',               label: 'Nano Banana 2' },
+    { id: 'seedream/4.5-text-to-image',  label: 'Seedream 4.5' },
+    { id: 'flux-2/flex-text-to-image',   label: 'Flux-2 Flex (draft)' },
+    { id: 'fal-ai/nano-banana-pro',      label: 'Nano Banana Pro (Premium)' },
   ],
   social_graphic: [
-    { id: 'ideogram-ai/ideogram-v3-turbo',    label: 'Ideogram V3 Turbo ⭐', provider: 'Replicate' },
-    { id: 'ideogram-ai/ideogram-v3-quality',  label: 'Ideogram V3 Quality', provider: 'Replicate' },
-    { id: 'fal-ai/nano-banana-pro',           label: 'Nano Banana Pro',     provider: 'fal.ai' },
+    { id: 'gpt-image/1.5-text-to-image', label: 'GPT Image 1.5 ⭐' },
+    { id: 'flux-2/pro-text-to-image',    label: 'Flux-2 Pro' },
+    { id: 'nano-banana-2',               label: 'Nano Banana 2' },
   ],
   logo: [
-    { id: 'recraft-ai/recraft-v4',            label: 'Recraft V4 ⭐',       provider: 'Replicate' },
-    { id: 'recraft-ai/recraft-v4-svg',        label: 'Recraft V4 SVG',      provider: 'Replicate' },
-    { id: 'fal-ai/nano-banana-pro',           label: 'Nano Banana Pro',     provider: 'fal.ai' },
+    { id: 'recraft-ai/recraft-v4',       label: 'Recraft V4 ⭐' },
+    { id: 'recraft-ai/recraft-v4-svg',   label: 'Recraft V4 SVG' },
   ],
   blog_header: [
-    { id: 'fal-ai/nano-banana-pro',           label: 'Nano Banana Pro ⭐',  provider: 'fal.ai' },
-    { id: 'google/imagen-4',                   label: 'Imagen 4',            provider: 'Replicate' },
-    { id: 'black-forest-labs/flux-2-pro',      label: 'FLUX 2 Pro',          provider: 'Replicate' },
+    { id: 'flux-2/pro-text-to-image',    label: 'Flux-2 Pro ⭐' },
+    { id: 'flux-2/flex-text-to-image',   label: 'Flux-2 Flex (draft)' },
+    { id: 'fal-ai/nano-banana-pro',      label: 'Nano Banana Pro (Premium)' },
   ],
   ad_creative: [
-    { id: 'fal-ai/nano-banana-pro',           label: 'Nano Banana Pro ⭐',  provider: 'fal.ai' },
-    { id: 'google/imagen-4-ultra',             label: 'Imagen 4 Ultra',      provider: 'Replicate' },
-    { id: 'black-forest-labs/flux-2-pro',      label: 'FLUX 2 Pro',          provider: 'Replicate' },
+    { id: 'nano-banana-2',               label: 'Nano Banana 2 ⭐' },
+    { id: 'seedream/4.5-text-to-image',  label: 'Seedream 4.5' },
+    { id: 'flux-2/pro-text-to-image',    label: 'Flux-2 Pro' },
+    { id: 'fal-ai/nano-banana-pro',      label: 'Nano Banana Pro (Premium)' },
   ],
 }
 
@@ -164,7 +164,7 @@ export function ImageGeneratorPanel({
 }: ImageGeneratorPanelProps) {
   const [tab, setTab]                 = useState<Tab>('generate')
   const [prompt, setPrompt]           = useState(defaultPrompt)
-  const [negPrompt, setNegPrompt]     = useState('blurry, low quality, distorted, watermark, ugly, deformed')
+  const [negPrompt, setNegPrompt]     = useState('plastic skin, skin smoothing, CGI render, depth flattening, oversaturated colors, blurry, distorted, watermark')
   const [useCase, setUseCase]         = useState<UseCase>(defaultUseCase)
   const [modelOverride, setModelOverride] = useState<string>('')  // empty = use default
   const [showModelPicker, setShowModelPicker] = useState(false)
@@ -178,7 +178,7 @@ export function ImageGeneratorPanel({
   // Edit mode state
   const [editImageUrl, setEditImageUrl]     = useState('')
   const [editInstruction, setEditInstruction] = useState('')
-  const [editModel, setEditModel]           = useState<'nano_banana' | 'flux_kontext'>('nano_banana')
+  const [editModel, setEditModel]           = useState<'nano_banana' | 'flux_kontext' | 'kieai_flux'>('kieai_flux')
   const [editNumImages, setEditNumImages]   = useState(2)
   const [editResolution, setEditResolution] = useState<'1K' | '2K' | '4K'>('1K')
   const [editing, setEditing]               = useState(false)
@@ -472,11 +472,6 @@ export function ImageGeneratorPanel({
                     : MODEL_LABELS[useCase]
                   }
                 </span>
-                {(modelOverride === 'fal-ai/nano-banana-pro' || (!modelOverride && NANO_BANANA_CASES.has(useCase))) && (
-                  <span className="ml-1.5 inline-flex items-center gap-0.5 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 px-1.5 py-0.5 text-[9px] font-semibold text-white">
-                    ✦ Google Gemini 3 Pro
-                  </span>
-                )}
               </p>
               <button
                 onClick={() => setShowModelPicker(!showModelPicker)}
@@ -495,14 +490,13 @@ export function ImageGeneratorPanel({
                     key={m.id}
                     onClick={() => { setModelOverride(m.id === DEFAULT_MODEL[useCase] ? '' : m.id); setShowModelPicker(false) }}
                     className={cn(
-                      'w-full flex items-center justify-between rounded px-2 py-1.5 text-xs transition-colors text-left',
+                      'w-full flex items-center rounded px-2 py-1.5 text-xs transition-colors text-left',
                       (modelOverride === m.id || (!modelOverride && m.id === DEFAULT_MODEL[useCase]))
                         ? 'bg-primary text-primary-foreground'
                         : 'hover:bg-muted'
                     )}
                   >
                     <span>{m.label}</span>
-                    <span className="text-[10px] opacity-70">{m.provider}</span>
                   </button>
                 ))}
               </div>
@@ -537,40 +531,36 @@ export function ImageGeneratorPanel({
 
           {/* Settings row */}
           <div className="flex items-end gap-3 flex-wrap">
-            {/* Negative prompt — only for non-Nano Banana models */}
-            {!NANO_BANANA_CASES.has(useCase) && (
-              <div className="flex-1 min-w-40 space-y-1.5">
-                <Label className="text-xs font-medium">Negative Prompt <span className="text-muted-foreground">(what to avoid)</span></Label>
-                <Input
-                  value={negPrompt}
-                  onChange={(e) => setNegPrompt(e.target.value)}
-                  placeholder="blurry, watermark..."
-                  className="h-8 text-xs"
-                />
-              </div>
-            )}
+            {/* Negative prompt */}
+            <div className="flex-1 min-w-40 space-y-1.5">
+              <Label className="text-xs font-medium">Negative Prompt <span className="text-muted-foreground">(what to avoid)</span></Label>
+              <Input
+                value={negPrompt}
+                onChange={(e) => setNegPrompt(e.target.value)}
+                placeholder="plastic skin, CGI render, blurry..."
+                className="h-8 text-xs"
+              />
+            </div>
 
-            {/* Resolution — Nano Banana only */}
-            {NANO_BANANA_CASES.has(useCase) && (
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium">Resolution</Label>
-                <div className="flex items-center gap-1">
-                  {(['1K', '2K', '4K'] as const).map((r) => (
-                    <button
-                      key={r}
-                      onClick={() => setResolution(r)}
-                      className={cn(
-                        'h-8 px-3 rounded text-xs font-medium border transition-colors',
-                        resolution === r ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-muted'
-                      )}
-                      title={r === '4K' ? 'Charged at 2× rate' : ''}
-                    >
-                      {r}{r === '4K' ? ' ×2' : ''}
-                    </button>
-                  ))}
-                </div>
+            {/* Resolution */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Resolution</Label>
+              <div className="flex items-center gap-1">
+                {(['1K', '2K', '4K'] as const).map((r) => (
+                  <button
+                    key={r}
+                    onClick={() => setResolution(r)}
+                    className={cn(
+                      'h-8 px-3 rounded text-xs font-medium border transition-colors',
+                      resolution === r ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-muted'
+                    )}
+                    title={r === '4K' ? 'Charged at 2× rate' : ''}
+                  >
+                    {r}{r === '4K' ? ' ×2' : ''}
+                  </button>
+                ))}
               </div>
-            )}
+            </div>
 
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Variations</Label>
@@ -749,13 +739,22 @@ export function ImageGeneratorPanel({
               <Label className="text-xs font-medium">Edit Engine</Label>
               <div className="flex items-center gap-1">
                 <button
+                  onClick={() => setEditModel('kieai_flux')}
+                  className={cn(
+                    'rounded border px-2.5 py-1.5 text-xs font-medium transition-colors',
+                    editModel === 'kieai_flux' ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-muted'
+                  )}
+                >
+                  Flux-2 Pro ⭐
+                </button>
+                <button
                   onClick={() => setEditModel('nano_banana')}
                   className={cn(
                     'rounded border px-2.5 py-1.5 text-xs font-medium transition-colors',
                     editModel === 'nano_banana' ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-muted'
                   )}
                 >
-                  Nano Banana Pro ⭐
+                  Nano Banana Pro
                 </button>
                 <button
                   onClick={() => setEditModel('flux_kontext')}
@@ -764,18 +763,20 @@ export function ImageGeneratorPanel({
                     editModel === 'flux_kontext' ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-muted'
                   )}
                 >
-                  FLUX Kontext Pro
+                  FLUX Kontext
                 </button>
               </div>
               <p className="text-[10px] text-muted-foreground">
-                {editModel === 'nano_banana'
-                  ? 'Google Gemini 3 Pro — best semantic understanding'
-                  : 'FLUX Kontext — best for precise style/object changes'}
+                {editModel === 'kieai_flux'
+                  ? 'Flux-2 Pro image-to-image — fast, high quality edits'
+                  : editModel === 'nano_banana'
+                  ? 'Nano Banana Pro — best semantic understanding'
+                  : 'FLUX Kontext — precise style/object changes'}
               </p>
             </div>
 
-            {/* Resolution — Nano Banana only */}
-            {editModel === 'nano_banana' && (
+            {/* Resolution — Nano Banana and Kie.ai Flux */}
+            {(editModel === 'nano_banana' || editModel === 'kieai_flux') && (
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium">Resolution</Label>
                 <div className="flex items-center gap-1">
@@ -832,7 +833,7 @@ export function ImageGeneratorPanel({
             {editing ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Editing with {editModel === 'nano_banana' ? 'Nano Banana Pro' : 'FLUX Kontext'}...
+                Editing with {editModel === 'kieai_flux' ? 'Flux-2 Pro' : editModel === 'nano_banana' ? 'Nano Banana Pro' : 'FLUX Kontext'}...
               </>
             ) : (
               <>

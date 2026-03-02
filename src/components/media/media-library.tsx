@@ -19,7 +19,7 @@ import {
   Trash2, Info, Download, Star, Image as ImageIcon,
   Video as VideoIcon, FileText, Music, Wand2, Camera,
   Globe, Filter, ChevronDown, Loader2, AlertCircle,
-  ImagePlus,
+  ImagePlus, Sparkles,
 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { toast } from 'sonner'
@@ -74,6 +74,25 @@ function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+// ── Model tag → display name mapping ─────────────────────────────────────────
+const MODEL_TAG_MAP: Record<string, string> = {
+  'flux-2':           'Flux-2 Pro',
+  'nano-banana-2':    'Nano Banana 2',
+  'gpt-image':        'GPT Image 1.5',
+  'seedream':         'Seedream 4.5',
+  'nano-banana-pro':  'Nano Banana Pro',
+  'recraft':          'Recraft V4',
+  'ideogram':         'Ideogram',
+  'imagen':           'Imagen',
+}
+
+function getModelFromTags(tags: string[]): string | null {
+  for (const tag of tags) {
+    if (MODEL_TAG_MAP[tag]) return MODEL_TAG_MAP[tag]
+  }
+  return null
 }
 
 function isVisualAsset(type: string | null): boolean {
@@ -220,13 +239,24 @@ function AssetCard({
             <span className="text-[10px] text-muted-foreground">{formatBytes(asset.file_size)}</span>
           )}
         </div>
+        {/* AI Model badge */}
+        {asset.source === 'ai_generated' && (() => {
+          const model = getModelFromTags(asset.tags)
+          return model ? (
+            <div className="flex items-center gap-1 mt-1.5">
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-0.5 text-purple-600 border-purple-200 bg-purple-50">
+                <Sparkles className="h-2.5 w-2.5" />{model}
+              </Badge>
+            </div>
+          ) : null
+        })()}
         {asset.tags.length > 0 && (
           <div className="flex gap-1 mt-1.5 flex-wrap">
-            {asset.tags.slice(0, 2).map((tag) => (
+            {asset.tags.filter(t => !MODEL_TAG_MAP[t] && t !== 'ai-generated' && t !== 'kieai' && t !== 'falai' && t !== 'replicate').slice(0, 2).map((tag) => (
               <Badge key={tag} variant="secondary" className="text-[10px] px-1.5 py-0">{tag}</Badge>
             ))}
-            {asset.tags.length > 2 && (
-              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">+{asset.tags.length - 2}</Badge>
+            {asset.tags.filter(t => !MODEL_TAG_MAP[t] && t !== 'ai-generated' && t !== 'kieai' && t !== 'falai' && t !== 'replicate').length > 2 && (
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">+{asset.tags.filter(t => !MODEL_TAG_MAP[t] && t !== 'ai-generated' && t !== 'kieai' && t !== 'falai' && t !== 'replicate').length - 2}</Badge>
             )}
           </div>
         )}
@@ -293,6 +323,16 @@ function AssetRow({
 
       {/* Type badge */}
       <Badge variant="outline" className="text-xs shrink-0 hidden sm:flex">{cfg.label}</Badge>
+
+      {/* AI Model badge */}
+      {asset.source === 'ai_generated' && (() => {
+        const model = getModelFromTags(asset.tags)
+        return model ? (
+          <Badge variant="outline" className="text-[10px] px-1.5 py-0 shrink-0 hidden sm:flex gap-0.5 text-purple-600 border-purple-200 bg-purple-50">
+            <Sparkles className="h-2.5 w-2.5" />{model}
+          </Badge>
+        ) : null
+      })()}
 
       {/* Size */}
       <span className="text-xs text-muted-foreground shrink-0 hidden md:block">
@@ -486,6 +526,17 @@ function DetailDrawer({
               <p className="font-medium truncate">{asset.mime_type.split('/')[1]?.toUpperCase() || asset.mime_type}</p>
             </div>
           )}
+          {asset.source === 'ai_generated' && (() => {
+            const model = getModelFromTags(asset.tags)
+            return model ? (
+              <div className="rounded bg-purple-50 border border-purple-100 p-2 col-span-2">
+                <p className="text-muted-foreground">AI Model</p>
+                <p className="font-medium flex items-center gap-1 text-purple-700">
+                  <Sparkles className="h-3 w-3" />{model}
+                </p>
+              </div>
+            ) : null
+          })()}
           <div className="rounded bg-muted p-2 col-span-2">
             <p className="text-muted-foreground">Uploaded</p>
             <p className="font-medium">{formatDistanceToNow(new Date(asset.created_at), { addSuffix: true })}</p>

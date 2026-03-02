@@ -19,6 +19,7 @@ import {
   MessageCircle,
   Megaphone,
   Globe,
+  Sparkles,
   X,
 } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -49,6 +50,7 @@ const navigation: NavItem[] = [
   { name: 'Calendar', href: '/calendar', icon: Calendar },
   { name: 'SEO & Keywords', href: '/seo', icon: Search },
   { name: 'Media Library', href: '/assets', icon: Image },
+  { name: 'AI Models', href: '/models', icon: Sparkles },
   { name: 'Strategy', href: '/strategy', icon: Compass },
   { name: 'Lead Magnets', href: '/lead-magnets', icon: Zap },
   { name: 'Ad Creatives', href: '/ads', icon: Megaphone },
