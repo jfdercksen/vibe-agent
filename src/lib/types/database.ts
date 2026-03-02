@@ -199,6 +199,15 @@ export interface BlogPost {
   published_url: string | null
   published_at: string | null
   fact_check_notes: string | null
+  seo_score: number | null
+  seo_analysis: string | null
+  readability_score: number | null
+  readability_analysis: string | null
+  category: string | null
+  tags: string[]
+  alt_text: string | null
+  external_sources: string | null
+  processing_log: string | null
   created_at: string
   updated_at: string
 }

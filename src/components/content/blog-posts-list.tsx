@@ -13,7 +13,7 @@ import { ScheduleModal } from '@/components/content/schedule-modal'
 import { BlogPostEditModal } from '@/components/content/blog-post-edit-modal'
 import { ImageGeneratorTrigger, ImageGeneratorPanel } from '@/components/images/image-generator-panel'
 import { PublishButton } from '@/components/content/publish-button'
-import { FileText, Search, Calendar, Eye, Copy, Check, Expand, ExternalLink, Pencil, RefreshCw, Image as ImageIcon } from 'lucide-react'
+import { FileText, Search, Calendar, Eye, Copy, Check, Expand, ExternalLink, Pencil, RefreshCw, Image as ImageIcon, BarChart3, Tag, ChevronDown, ChevronUp } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import ReactMarkdown from 'react-markdown'
 import type { BlogPost } from '@/lib/types/database'
@@ -33,6 +33,43 @@ const intentConfig: Record<string, { label: string; className: string }> = {
   transactional: { label: 'Transactional', className: 'bg-green-100 text-green-700 hover:bg-green-100' },
   navigational: { label: 'Navigational', className: 'bg-amber-100 text-amber-700 hover:bg-amber-100' },
   commercial: { label: 'Commercial', className: 'bg-purple-100 text-purple-700 hover:bg-purple-100' },
+}
+
+function ScoreBadge({ score, label }: { score: number; label: string }) {
+  const colorClass = score >= 70
+    ? 'bg-green-100 text-green-700 border-green-200'
+    : score >= 40
+    ? 'bg-amber-100 text-amber-700 border-amber-200'
+    : 'bg-red-100 text-red-700 border-red-200'
+  return (
+    <span
+      className={`inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded-full border ${colorClass}`}
+      title={`${label}: ${score}/100`}
+    >
+      <BarChart3 className="h-2.5 w-2.5" />
+      {score}
+    </span>
+  )
+}
+
+function ProcessingLogSection({ log }: { log: string }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="border-t pt-2">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+      >
+        {open ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+        Processing Log
+      </button>
+      {open && (
+        <pre className="mt-2 bg-muted/30 rounded-lg p-3 text-xs whitespace-pre-wrap font-mono max-h-[200px] overflow-y-auto">
+          {log}
+        </pre>
+      )}
+    </div>
+  )
 }
 
 function BlogExpandModal({ post, open, onClose, clientId, onImageSaved }: { post: BlogPost | null; open: boolean; onClose: () => void; clientId: string; onImageSaved: (postId: string, imageUrl: string) => void }) {
@@ -73,6 +110,12 @@ function BlogExpandModal({ post, open, onClose, clientId, onImageSaved }: { post
                 <Search className="h-3 w-3" />
                 {post.target_keyword}
               </span>
+            )}
+            {post.seo_score !== null && post.seo_score !== undefined && (
+              <ScoreBadge score={post.seo_score} label="SEO" />
+            )}
+            {post.readability_score !== null && post.readability_score !== undefined && (
+              <ScoreBadge score={post.readability_score} label="Readability" />
             )}
           </div>
         </DialogHeader>
@@ -132,6 +175,76 @@ function BlogExpandModal({ post, open, onClose, clientId, onImageSaved }: { post
             <span>{formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}</span>
           </div>
 
+          {/* SEO Analysis */}
+          {(post.seo_score !== null || post.seo_analysis) && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">SEO Analysis</p>
+                {post.seo_score !== null && post.seo_score !== undefined && <ScoreBadge score={post.seo_score} label="SEO" />}
+              </div>
+              {post.seo_analysis && (
+                <p className="text-sm text-muted-foreground bg-muted/30 rounded-lg p-3">{post.seo_analysis}</p>
+              )}
+            </div>
+          )}
+
+          {/* Readability */}
+          {(post.readability_score !== null || post.readability_analysis) && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Readability</p>
+                {post.readability_score !== null && post.readability_score !== undefined && <ScoreBadge score={post.readability_score} label="Readability" />}
+              </div>
+              {post.readability_analysis && (
+                <p className="text-sm text-muted-foreground bg-muted/30 rounded-lg p-3">{post.readability_analysis}</p>
+              )}
+            </div>
+          )}
+
+          {/* Details grid */}
+          {(post.category || (post.tags && post.tags.length > 0) || post.alt_text || post.external_sources) && (
+            <div className="space-y-3 pt-2 border-t">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Details</p>
+              <div className="grid gap-3 sm:grid-cols-2 text-sm">
+                {post.category && (
+                  <div>
+                    <span className="text-xs text-muted-foreground">Category</span>
+                    <p className="font-medium">{post.category}</p>
+                  </div>
+                )}
+                {post.tags && post.tags.length > 0 && (
+                  <div>
+                    <span className="text-xs text-muted-foreground">Tags</span>
+                    <div className="flex flex-wrap gap-1 mt-0.5">
+                      {post.tags.map((tag) => (
+                        <Badge key={tag} variant="secondary" className="text-xs font-normal gap-0.5">
+                          <Tag className="h-2.5 w-2.5" />{tag}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {post.alt_text && (
+                  <div className="sm:col-span-2">
+                    <span className="text-xs text-muted-foreground">Image Alt Text</span>
+                    <p>{post.alt_text}</p>
+                  </div>
+                )}
+                {post.external_sources && (
+                  <div className="sm:col-span-2">
+                    <span className="text-xs text-muted-foreground">External Sources</span>
+                    <p className="whitespace-pre-wrap">{post.external_sources}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Processing Log */}
+          {post.processing_log && (
+            <ProcessingLogSection log={post.processing_log} />
+          )}
+
           {/* Actions */}
           <div className="flex items-center justify-between pt-2">
             {post.published_url && (
@@ -161,7 +274,7 @@ function BlogExpandModal({ post, open, onClose, clientId, onImageSaved }: { post
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={post.featured_image_url}
-                    alt={post.title}
+                    alt={post.alt_text || post.title}
                     className="w-full object-cover max-h-56"
                   />
                   <a
@@ -308,7 +421,7 @@ export function BlogPostsList({ posts, clientId, n8nConfigured = false }: BlogPo
                   <div className="relative h-40 w-full overflow-hidden rounded-t-lg">
                     <img
                       src={post.featured_image_url}
-                      alt={post.title}
+                      alt={post.alt_text || post.title}
                       className="h-full w-full object-cover"
                       loading="lazy"
                       decoding="async"
@@ -330,6 +443,12 @@ export function BlogPostsList({ posts, clientId, n8nConfigured = false }: BlogPo
                     </div>
                     <div className="flex items-center gap-1">
                       <StatusBadge status={post.status} />
+                      {post.seo_score !== null && post.seo_score !== undefined && (
+                        <ScoreBadge score={post.seo_score} label="SEO" />
+                      )}
+                      {post.readability_score !== null && post.readability_score !== undefined && (
+                        <ScoreBadge score={post.readability_score} label="Read" />
+                      )}
                       <Button
                         variant="ghost"
                         size="icon"
@@ -347,6 +466,9 @@ export function BlogPostsList({ posts, clientId, n8nConfigured = false }: BlogPo
                   >
                     {post.title}
                   </CardTitle>
+                  {post.category && (
+                    <span className="text-xs text-muted-foreground font-medium">{post.category}</span>
+                  )}
                   {post.meta_description && (
                     <CardDescription className="line-clamp-2 mt-1">{post.meta_description}</CardDescription>
                   )}
@@ -368,6 +490,21 @@ export function BlogPostsList({ posts, clientId, n8nConfigured = false }: BlogPo
                       {post.secondary_keywords.length > 3 && (
                         <Badge variant="outline" className="text-xs font-normal text-muted-foreground">
                           +{post.secondary_keywords.length - 3}
+                        </Badge>
+                      )}
+                    </div>
+                  )}
+
+                  {post.tags && post.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {post.tags.slice(0, 3).map((tag) => (
+                        <Badge key={tag} variant="secondary" className="text-xs font-normal gap-0.5">
+                          <Tag className="h-2.5 w-2.5" />{tag}
+                        </Badge>
+                      ))}
+                      {post.tags.length > 3 && (
+                        <Badge variant="secondary" className="text-xs font-normal text-muted-foreground">
+                          +{post.tags.length - 3}
                         </Badge>
                       )}
                     </div>

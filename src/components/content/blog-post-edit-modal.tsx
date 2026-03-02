@@ -40,6 +40,15 @@ export function BlogPostEditModal({ post, open, onClose, onSaved }: BlogPostEdit
   const [status, setStatus] = useState<BlogPost['status']>(post?.status || 'outline')
   const [isLoading, setIsLoading] = useState(false)
   const [previewTab, setPreviewTab] = useState<'edit' | 'preview'>('edit')
+  const [seoScore, setSeoScore] = useState(post?.seo_score?.toString() || '')
+  const [seoAnalysis, setSeoAnalysis] = useState(post?.seo_analysis || '')
+  const [readabilityScore, setReadabilityScore] = useState(post?.readability_score?.toString() || '')
+  const [readabilityAnalysis, setReadabilityAnalysis] = useState(post?.readability_analysis || '')
+  const [category, setCategory] = useState(post?.category || '')
+  const [tags, setTags] = useState(post?.tags?.join(', ') || '')
+  const [altText, setAltText] = useState(post?.alt_text || '')
+  const [externalSources, setExternalSources] = useState(post?.external_sources || '')
+  const [processingLog, setProcessingLog] = useState(post?.processing_log || '')
 
   // Re-sync when post changes
   const [lastPostId, setLastPostId] = useState(post?.id)
@@ -49,6 +58,15 @@ export function BlogPostEditModal({ post, open, onClose, onSaved }: BlogPostEdit
     setTargetKeyword(post?.target_keyword || '')
     setBodyMarkdown(post?.body_markdown || '')
     setStatus(post?.status || 'outline')
+    setSeoScore(post?.seo_score?.toString() || '')
+    setSeoAnalysis(post?.seo_analysis || '')
+    setReadabilityScore(post?.readability_score?.toString() || '')
+    setReadabilityAnalysis(post?.readability_analysis || '')
+    setCategory(post?.category || '')
+    setTags(post?.tags?.join(', ') || '')
+    setAltText(post?.alt_text || '')
+    setExternalSources(post?.external_sources || '')
+    setProcessingLog(post?.processing_log || '')
     setLastPostId(post?.id)
   }
 
@@ -66,6 +84,10 @@ export function BlogPostEditModal({ post, open, onClose, onSaved }: BlogPostEdit
 
     setIsLoading(true)
     try {
+      const parsedTags = tags.split(/[,]+/).map((t) => t.trim()).filter(Boolean)
+      const parsedSeoScore = seoScore.trim() ? parseInt(seoScore, 10) : null
+      const parsedReadabilityScore = readabilityScore.trim() ? parseInt(readabilityScore, 10) : null
+
       const fields: Partial<BlogPost> = {
         title: title.trim(),
         meta_description: metaDescription.trim() || null,
@@ -73,6 +95,15 @@ export function BlogPostEditModal({ post, open, onClose, onSaved }: BlogPostEdit
         body_markdown: bodyMarkdown || null,
         word_count: wordCount || null,
         status: status as BlogPost['status'],
+        seo_score: parsedSeoScore !== null && !isNaN(parsedSeoScore) ? Math.max(0, Math.min(100, parsedSeoScore)) : null,
+        seo_analysis: seoAnalysis.trim() || null,
+        readability_score: parsedReadabilityScore !== null && !isNaN(parsedReadabilityScore) ? Math.max(0, Math.min(100, parsedReadabilityScore)) : null,
+        readability_analysis: readabilityAnalysis.trim() || null,
+        category: category.trim() || null,
+        tags: parsedTags,
+        alt_text: altText.trim() || null,
+        external_sources: externalSources.trim() || null,
+        processing_log: processingLog.trim() || null,
       }
 
       const res = await fetch('/api/content/update', {
@@ -197,6 +228,135 @@ export function BlogPostEditModal({ post, open, onClose, onSaved }: BlogPostEdit
                 </div>
               </TabsContent>
             </Tabs>
+          </div>
+          {/* ── SEO Section ── */}
+          <div className="space-y-4 pt-4 border-t">
+            <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">SEO</p>
+            <div className="grid gap-4 sm:grid-cols-[120px_1fr]">
+              <div className="space-y-2">
+                <Label htmlFor="blog-seo-score">Score</Label>
+                <Input
+                  id="blog-seo-score"
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={seoScore}
+                  onChange={(e) => setSeoScore(e.target.value)}
+                  placeholder="0-100"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="blog-seo-analysis">SEO Analysis</Label>
+                <Textarea
+                  id="blog-seo-analysis"
+                  value={seoAnalysis}
+                  onChange={(e) => setSeoAnalysis(e.target.value)}
+                  rows={3}
+                  placeholder="Explanation of the SEO score..."
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* ── Readability Section ── */}
+          <div className="space-y-4 pt-4 border-t">
+            <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Readability</p>
+            <div className="grid gap-4 sm:grid-cols-[120px_1fr]">
+              <div className="space-y-2">
+                <Label htmlFor="blog-readability-score">Score</Label>
+                <Input
+                  id="blog-readability-score"
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={readabilityScore}
+                  onChange={(e) => setReadabilityScore(e.target.value)}
+                  placeholder="0-100"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="blog-readability-analysis">Readability Analysis</Label>
+                <Textarea
+                  id="blog-readability-analysis"
+                  value={readabilityAnalysis}
+                  onChange={(e) => setReadabilityAnalysis(e.target.value)}
+                  rows={3}
+                  placeholder="Explanation of the readability score..."
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* ── Categorization Section ── */}
+          <div className="space-y-4 pt-4 border-t">
+            <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Categorization</p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="blog-category">Category</Label>
+                <Input
+                  id="blog-category"
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  placeholder="e.g. Business Automation"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="blog-tags">
+                  Tags <span className="text-muted-foreground font-normal">(comma separated)</span>
+                </Label>
+                <Input
+                  id="blog-tags"
+                  value={tags}
+                  onChange={(e) => setTags(e.target.value)}
+                  placeholder="SEO, Workflow, Business"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* ── Image Section ── */}
+          <div className="space-y-4 pt-4 border-t">
+            <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Image</p>
+            <div className="space-y-2">
+              <Label htmlFor="blog-alt-text">Alt Text</Label>
+              <Input
+                id="blog-alt-text"
+                value={altText}
+                onChange={(e) => setAltText(e.target.value)}
+                placeholder="SEO alt text for the featured image..."
+              />
+            </div>
+          </div>
+
+          {/* ── References Section ── */}
+          <div className="space-y-4 pt-4 border-t">
+            <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">References</p>
+            <div className="space-y-2">
+              <Label htmlFor="blog-sources">External Sources</Label>
+              <Textarea
+                id="blog-sources"
+                value={externalSources}
+                onChange={(e) => setExternalSources(e.target.value)}
+                rows={3}
+                placeholder="Reference URLs or citations..."
+              />
+            </div>
+          </div>
+
+          {/* ── Processing Section ── */}
+          <div className="space-y-4 pt-4 border-t">
+            <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Processing</p>
+            <div className="space-y-2">
+              <Label htmlFor="blog-processing-log">Processing Log</Label>
+              <Textarea
+                id="blog-processing-log"
+                value={processingLog}
+                onChange={(e) => setProcessingLog(e.target.value)}
+                rows={4}
+                className="font-mono text-xs"
+                placeholder="Audit trail of how this post was generated..."
+              />
+            </div>
           </div>
         </div>
 
