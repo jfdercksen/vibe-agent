@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
+import { kieAiEdit } from '@/lib/kieai'
 
 export const maxDuration = 300  // 5 minutes — image editing is slow, especially at 2K/4K
 
@@ -187,8 +188,12 @@ export async function POST(request: NextRequest) {
     if (editModel === 'flux_kontext') {
       result = await editWithFluxKontext(imageUrl, instruction, width, height, numImages)
       modelLabel = 'FLUX Kontext Pro'
+    } else if (editModel === 'kieai_flux') {
+      // Kie.ai Flux-2 Pro image-to-image — cheaper style transfer and background swaps
+      result = await kieAiEdit({ imageUrl, instruction, aspectRatio, resolution, numImages })
+      modelLabel = 'Flux-2 Pro (Kie.ai)'
     } else {
-      // Default: Nano Banana Pro edit
+      // Default: Nano Banana Pro edit (fal.ai)
       result = await editWithNanoBanana(imageUrl, instruction, aspectRatio, numImages, resolution, seed)
       modelLabel = 'Nano Banana Pro'
     }
@@ -211,7 +216,10 @@ export async function POST(request: NextRequest) {
             file_url: publicUrl,
             mime_type: 'image/jpeg',
             alt_text: altText || `Edited: ${instruction.slice(0, 100)}`,
-            tags: [...tags, 'ai-edited', editModel === 'flux_kontext' ? 'flux-kontext' : 'nano-banana'],
+            tags: [...tags, 'ai-edited',
+              editModel === 'flux_kontext' ? 'flux-kontext' :
+              editModel === 'kieai_flux' ? 'kieai-flux' :
+              'nano-banana'],
             source: 'ai_generated',
             ai_prompt: instruction,
             reference_id: originalAssetId,

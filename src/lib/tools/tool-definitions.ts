@@ -303,19 +303,22 @@ Use this to:
 
   {
     name: 'generate_image',
-    description: `Generate AI images using the best model for the use case via fal.ai.
+    description: `Generate AI images using the best model for the use case.
 Images are automatically saved to the client's Media Library in Supabase Storage.
 
-DEFAULT MODEL: Nano Banana Pro (Google Gemini 3 Pro Image) — the highest quality image model available.
-Used for: general, product_photo, blog_header, ad_creative use cases.
+DEFAULT ROUTING — Kie.ai models (cheaper, high quality):
+- general        → Flux-2 Pro via Kie.ai (photorealistic, great all-round)
+- product_photo  → Flux-2 Pro via Kie.ai (clean studio-style product shots)
+- blog_header    → Flux-2 Pro via Kie.ai (wide 16:9 editorial imagery)
+- ad_creative    → Nano Banana 2 via Kie.ai (Gemini Flash, UGC-style, 4:5)
+- social_graphic → GPT Image 1.5 via Kie.ai (BEST text rendering — use for any graphic with text)
+- logo           → Recraft V4 via Replicate (vectors, brand marks, logos)
 
-USE CASE → MODEL routing (automatic):
-- general        → Nano Banana Pro / Google Gemini 3 Pro (best all-round quality, default)
-- product_photo  → Nano Banana Pro / Google Gemini 3 Pro (photorealistic product shots)
-- blog_header    → Nano Banana Pro / Google Gemini 3 Pro (wide 16:9 editorial imagery)
-- ad_creative    → Nano Banana Pro / Google Gemini 3 Pro (premium 4:5 portrait ad creative)
-- social_graphic → Ideogram V2 (text overlays, social media graphics with headlines — text-heavy only)
-- logo           → Recraft V3 (logos, brand marks, icons, vectors — brand identity only)
+PROMPT ENGINEERING — always write Dense Narrative prompts:
+- Camera math: "85mm lens, f/1.8, ISO 200"
+- Material physics: "brushed anodized aluminum, directional grain, specular highlight at 30°"
+- Inline negatives: "Do not beautify. No skin smoothing. No CGI."
+- Specific imperfections for people: "visible pores, mild redness, light freckles"
 
 ALWAYS call this when the user asks to:
 - "Generate an image for..."
@@ -324,7 +327,7 @@ ALWAYS call this when the user asks to:
 - "Design a graphic for..."
 - "Add an image to this post/blog/email"
 
-Write detailed, descriptive prompts. Include: subject, style, lighting, mood, colors, composition.
+Write detailed Dense Narrative prompts. Include: subject, material physics, camera math, lighting behaviour, inline negative commands.
 Always mention brand colors if known. Generate 2-4 variations so user can choose.`,
     input_schema: {
       type: 'object' as const,
@@ -446,8 +449,8 @@ Generate 2 variations so the user can choose.`,
         },
         editModel: {
           type: 'string',
-          enum: ['nano_banana', 'flux_kontext'],
-          description: 'Edit engine to use. nano_banana = Nano Banana Pro (best semantic understanding, default). flux_kontext = FLUX Kontext Pro (precise object/style changes).',
+          enum: ['nano_banana', 'flux_kontext', 'kieai_flux'],
+          description: 'Edit engine to use. nano_banana = Nano Banana Pro fal.ai (best semantic understanding, default). flux_kontext = FLUX Kontext Pro fal.ai (precise object/style changes). kieai_flux = Flux-2 Pro Kie.ai (cheaper style transfer and background swaps).',
         },
         resolution: {
           type: 'string',

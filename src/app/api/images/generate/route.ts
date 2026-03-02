@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
+import { kieAiGenerate } from '@/lib/kieai'
 
 export const maxDuration = 300  // 5 minutes — high-res generation can be slow
 
 // ── Model Router ──────────────────────────────────────────────────────────────
 type ImageUseCase = 'product_photo' | 'social_graphic' | 'logo' | 'blog_header' | 'ad_creative' | 'general'
-type Provider = 'fal' | 'replicate'
+type Provider = 'fal' | 'replicate' | 'kieai'
 
 interface ModelConfig {
   modelId: string
@@ -13,7 +14,7 @@ interface ModelConfig {
   description: string
   provider: Provider
   isNanoBanana?: boolean   // Nano Banana uses different fal.ai schema
-  aspectRatio?: string     // for Nano Banana
+  aspectRatio?: string     // aspect ratio override for this use case
 }
 
 // ── All available models (for UI model picker) ─────────────────────────────────
@@ -21,57 +22,64 @@ export const ALL_MODELS: Array<{
   id: string; label: string; description: string; provider: Provider;
   useCases: ImageUseCase[]; isNanoBanana?: boolean; aspectRatio?: string
 }> = [
-  // Nano Banana Pro (DEFAULT — Google Gemini 3 Pro Image)
+  // ── Kie.ai models (DEFAULT routing — cheaper, high quality) ──────────────────
+
+  // Flux-2 Pro via Kie.ai — DEFAULT for product, blog, general
+  {
+    id: 'flux-2/pro-text-to-image',
+    label: 'Flux-2 Pro (Kie.ai)',
+    description: 'Flux-2 Pro — photorealistic, great for products & lifestyle ⭐ DEFAULT',
+    provider: 'kieai',
+    useCases: ['general', 'product_photo', 'blog_header'],
+  },
+  // Nano Banana 2 via Kie.ai — DEFAULT for ad creative (Gemini Flash, UGC-style)
+  {
+    id: 'nano-banana-2',
+    label: 'Nano Banana 2 (Kie.ai)',
+    description: 'Gemini Flash Image — fast, UGC-style lifestyle shots, ad creative ⭐ DEFAULT ad',
+    provider: 'kieai',
+    aspectRatio: '4:5',
+    useCases: ['ad_creative', 'product_photo'],
+  },
+  // GPT Image 1.5 via Kie.ai — DEFAULT for social graphics (best text rendering)
+  {
+    id: 'gpt-image/1.5-text-to-image',
+    label: 'GPT Image 1.5 (Kie.ai)',
+    description: 'GPT-4o Image — #1 for text-on-image, social graphics with headlines ⭐ DEFAULT social',
+    provider: 'kieai',
+    useCases: ['social_graphic'],
+  },
+  // Seedream 4.5 via Kie.ai — fashion, beauty, skin-forward lifestyle
+  {
+    id: 'seedream/4.5-text-to-image',
+    label: 'Seedream 4.5 (Kie.ai)',
+    description: 'Seedream 4.5 — fashion, beauty, high-detail skin rendering',
+    provider: 'kieai',
+    useCases: ['product_photo', 'ad_creative'],
+  },
+  // Flux-2 Flex via Kie.ai — cheaper draft option
+  {
+    id: 'flux-2/flex-text-to-image',
+    label: 'Flux-2 Flex (Kie.ai)',
+    description: 'Flux-2 Flex — fast drafts and variants (cheaper than Pro)',
+    provider: 'kieai',
+    useCases: ['general', 'product_photo'],
+  },
+
+  // ── fal.ai models (premium, highest quality) ─────────────────────────────────
+  // Nano Banana Pro (fal.ai — Google Gemini 3 Pro — highest quality option)
   {
     id: 'fal-ai/nano-banana-pro',
-    label: 'Nano Banana Pro',
-    description: 'Google Gemini 3 Pro Image — highest quality, best all-round ⭐ DEFAULT',
+    label: 'Nano Banana Pro (fal.ai)',
+    description: 'Google Gemini 3 Pro Image — premium quality when you need the best',
     provider: 'fal',
     isNanoBanana: true,
     aspectRatio: '1:1',
     useCases: ['general', 'product_photo', 'blog_header', 'ad_creative'],
   },
-  // Google Imagen 4 Ultra (via Replicate)
-  {
-    id: 'google/imagen-4-ultra',
-    label: 'Imagen 4 Ultra',
-    description: 'Google Imagen 4 Ultra — flagship quality, exceptional detail',
-    provider: 'replicate',
-    useCases: ['product_photo', 'ad_creative', 'general'],
-  },
-  // Google Imagen 4 (via Replicate) — faster/cheaper than Ultra
-  {
-    id: 'google/imagen-4',
-    label: 'Imagen 4',
-    description: 'Google Imagen 4 — great quality, faster than Ultra',
-    provider: 'replicate',
-    useCases: ['general', 'product_photo', 'blog_header'],
-  },
-  // FLUX 2 Pro (via Replicate)
-  {
-    id: 'black-forest-labs/flux-2-pro',
-    label: 'FLUX 2 Pro',
-    description: 'FLUX 2 Pro — photorealistic, excellent for people & products',
-    provider: 'replicate',
-    useCases: ['product_photo', 'ad_creative', 'blog_header'],
-  },
-  // Ideogram V3 Quality (via Replicate) — text-on-image king
-  {
-    id: 'ideogram-ai/ideogram-v3-quality',
-    label: 'Ideogram V3 Quality',
-    description: 'Ideogram V3 — #1 for text-on-image, social graphics with headlines',
-    provider: 'replicate',
-    useCases: ['social_graphic'],
-  },
-  // Ideogram V3 Turbo (via Replicate) — cheaper text-on-image
-  {
-    id: 'ideogram-ai/ideogram-v3-turbo',
-    label: 'Ideogram V3 Turbo',
-    description: 'Ideogram V3 Turbo — fast text-on-image ($0.03/img)',
-    provider: 'replicate',
-    useCases: ['social_graphic'],
-  },
-  // Recraft V4 (via Replicate) — best for logos/vectors
+
+  // ── Replicate models ─────────────────────────────────────────────────────────
+  // Recraft V4 — logos/vectors (no Kie.ai equivalent yet)
   {
     id: 'recraft-ai/recraft-v4',
     label: 'Recraft V4',
@@ -79,7 +87,6 @@ export const ALL_MODELS: Array<{
     provider: 'replicate',
     useCases: ['logo'],
   },
-  // Recraft V4 SVG (via Replicate) — actual SVG output
   {
     id: 'recraft-ai/recraft-v4-svg',
     label: 'Recraft V4 SVG',
@@ -89,15 +96,15 @@ export const ALL_MODELS: Array<{
   },
 ]
 
-// Nano Banana Pro is the DEFAULT for all use cases — best quality overall.
-// Only route to specialist models when Nano Banana isn't ideal for the task.
+// ── Default model routing ─────────────────────────────────────────────────────
+// Kie.ai as default (cheaper) — fal.ai only used as explicit override
 const MODEL_MAP: Record<ImageUseCase, ModelConfig> = {
-  general:        { modelId: 'fal-ai/nano-banana-pro',  label: 'Nano Banana Pro',        description: 'Google Gemini 3 Pro — best all-round quality',          provider: 'fal',       isNanoBanana: true, aspectRatio: '1:1'  },
-  product_photo:  { modelId: 'fal-ai/nano-banana-pro',  label: 'Nano Banana Pro',        description: 'Google Gemini 3 Pro — photorealistic studio shots',      provider: 'fal',       isNanoBanana: true, aspectRatio: '1:1'  },
-  social_graphic: { modelId: 'ideogram-ai/ideogram-v3-turbo', label: 'Ideogram V3 Turbo', description: 'Best for text-on-image & social graphics',             provider: 'replicate'                                        },
-  logo:           { modelId: 'recraft-ai/recraft-v4',   label: 'Recraft V4',             description: 'Logos, brand marks, icons, vectors',                    provider: 'replicate'                                        },
-  blog_header:    { modelId: 'fal-ai/nano-banana-pro',  label: 'Nano Banana Pro',        description: 'Google Gemini 3 Pro — wide editorial imagery',           provider: 'fal',       isNanoBanana: true, aspectRatio: '16:9' },
-  ad_creative:    { modelId: 'fal-ai/nano-banana-pro',  label: 'Nano Banana Pro',        description: 'Google Gemini 3 Pro — premium ad creative',              provider: 'fal',       isNanoBanana: true, aspectRatio: '4:5'  },
+  general:        { modelId: 'flux-2/pro-text-to-image',         label: 'Flux-2 Pro',      description: 'Flux-2 Pro via Kie.ai — photorealistic, general use',      provider: 'kieai', aspectRatio: '1:1'  },
+  product_photo:  { modelId: 'flux-2/pro-text-to-image',         label: 'Flux-2 Pro',      description: 'Flux-2 Pro via Kie.ai — clean product shots',               provider: 'kieai', aspectRatio: '1:1'  },
+  social_graphic: { modelId: 'gpt-image/1.5-text-to-image',      label: 'GPT Image 1.5',   description: 'GPT-4o Image via Kie.ai — best text-on-image accuracy',      provider: 'kieai', aspectRatio: '1:1'  },
+  logo:           { modelId: 'recraft-ai/recraft-v4',            label: 'Recraft V4',      description: 'Logos, brand marks, icons, vectors',                         provider: 'replicate'                  },
+  blog_header:    { modelId: 'flux-2/pro-text-to-image',         label: 'Flux-2 Pro',      description: 'Flux-2 Pro via Kie.ai — wide editorial imagery',             provider: 'kieai', aspectRatio: '16:9' },
+  ad_creative:    { modelId: 'nano-banana-2',                    label: 'Nano Banana 2',   description: 'Gemini Flash via Kie.ai — UGC-style ad creative',            provider: 'kieai', aspectRatio: '4:5'  },
 }
 
 // Aspect ratios for non-Nano-Banana models (width x height)
@@ -366,17 +373,28 @@ export async function POST(request: NextRequest) {
     const count = Math.min(numImages, 4)
 
     // Determine provider and model type
-    // Check if the selected model (override or default) is Nano Banana
-    const isNanoBanana = selectedModelId === 'fal-ai/nano-banana-pro'
-    // Check if the selected model is a Replicate model
     const selectedModelInfo = ALL_MODELS.find(m => m.id === selectedModelId)
+    const isNanoBanana = selectedModelId === 'fal-ai/nano-banana-pro'
+    const isKieAi = selectedModelInfo?.provider === 'kieai' ||
+      (!isNanoBanana && modelConfig.provider === 'kieai' && !model)
     const isReplicate = selectedModelInfo?.provider === 'replicate' ||
-      (!isNanoBanana && model && !model.startsWith('fal-ai/'))
+      (!isNanoBanana && !isKieAi && model && !model.startsWith('fal-ai/'))
 
     // Generate images
     let result: { images: Array<{ url: string; width?: number; height?: number; content_type?: string }> }
 
-    if (isNanoBanana) {
+    if (isKieAi || selectedModelInfo?.provider === 'kieai') {
+      // Kie.ai model — use unified createTask API
+      const kieAspectRatio = modelConfig.aspectRatio || '1:1'
+      result = await kieAiGenerate({
+        model: selectedModelId,
+        prompt,
+        negativePrompt,
+        aspectRatio: kieAspectRatio,
+        resolution,
+        numImages: count,
+      })
+    } else if (isNanoBanana) {
       // Nano Banana Pro — fal.ai with its own schema
       const nbAspectRatio = model ? '1:1' : (modelConfig.aspectRatio || '1:1')
       result = await callNanoBanana(prompt, nbAspectRatio, count, resolution, seed)
@@ -424,10 +442,16 @@ export async function POST(request: NextRequest) {
             mime_type: mimeType,
             alt_text: altText || prompt.slice(0, 120),
             tags: [...tags, 'ai-generated', useCaseKey.replace('_', '-'),
-              isNanoBanana ? 'nano-banana' :
-              (selectedModelId.includes('ideogram') ? 'ideogram' :
-              (selectedModelId.includes('recraft') ? 'recraft' :
-              (selectedModelId.includes('imagen') ? 'imagen' : 'flux')))
+              isNanoBanana ? 'nano-banana-pro' :
+              selectedModelId.includes('nano-banana-2') ? 'nano-banana-2' :
+              selectedModelId.includes('gpt-image') ? 'gpt-image' :
+              selectedModelId.includes('seedream') ? 'seedream' :
+              selectedModelId.includes('flux-2') ? 'flux-2' :
+              selectedModelId.includes('ideogram') ? 'ideogram' :
+              selectedModelId.includes('recraft') ? 'recraft' :
+              selectedModelId.includes('imagen') ? 'imagen' : 'ai',
+              // Provider tag for cost tracking
+              isKieAi || selectedModelInfo?.provider === 'kieai' ? 'kieai' : isNanoBanana ? 'falai' : isReplicate ? 'replicate' : 'falai',
             ],
             source: 'ai_generated',
             ai_prompt: prompt,
@@ -449,7 +473,7 @@ export async function POST(request: NextRequest) {
       model: selectedModelId,
       modelLabel: modelConfig.label,
       useCase: useCaseKey,
-      isNanoBanana,
+      provider: isKieAi || selectedModelInfo?.provider === 'kieai' ? 'kieai' : isNanoBanana ? 'falai' : isReplicate ? 'replicate' : 'falai',
       images: savedAssets.length > 0 ? savedAssets : generatedImages.map(img => ({ file_url: img.url })),
       count: generatedImages.length,
     })
