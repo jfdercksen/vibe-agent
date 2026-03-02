@@ -128,6 +128,16 @@ function BlogExpandModal({ post, open, onClose, clientId, onImageSaved }: { post
             </div>
           )}
 
+          {/* Key Takeaways */}
+          {post.key_takeaways && (
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Key Takeaways</p>
+              <div className="prose prose-sm dark:prose-invert max-w-none bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-800/30 rounded-lg p-4">
+                <ReactMarkdown>{post.key_takeaways}</ReactMarkdown>
+              </div>
+            </div>
+          )}
+
           {/* Content tabs */}
           {content && (
             <div>

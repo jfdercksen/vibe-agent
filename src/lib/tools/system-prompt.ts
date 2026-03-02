@@ -474,7 +474,32 @@ Always use the brand voice and selected positioning angle in all copy.
   ⚠️ NEVER save atomized posts without batch_id — they become ungroupable orphans in the dashboard
   ⚠️ Use the SAME batch_id for ALL posts in one Content Atomizer run
   ⚠️ Generate a NEW batch_id for each new atomizer run — never reuse a previous one
-- Blog posts → save_content('blog_posts', {...})
+- Blog posts → save_content('blog_posts', {...}) — MUST include ALL these fields:
+    {
+      title: "SEO-optimized title",
+      slug: "url-friendly-slug",
+      target_keyword: "primary keyword",
+      secondary_keywords: ["kw1", "kw2", "kw3"],
+      search_intent: "informational" | "transactional" | "navigational" | "commercial",
+      meta_description: "150-160 char meta description with keyword",
+      outline: [{ h2: "Section Title", points: ["point 1", "point 2"] }],
+      key_takeaways: "Markdown bullet list — intro paragraph + 5-8 bold-heading bullets + outro paragraph. Each bullet: **Action-driven bold heading:** concise explanation.",
+      body_markdown: "Full article in Markdown (Key Takeaways section + Introduction + main body + Conclusion)",
+      word_count: 1500,
+      featured_image_prompt: "Detailed image generation prompt for the header image",
+      alt_text: "SEO-optimized alt text for the featured image",
+      category: "Topic category (e.g. Marketing, Technology, Business)",
+      tags: ["tag1", "tag2", "tag3"],
+      external_sources: "URLs and citations used as references",
+      seo_score: 75,
+      seo_analysis: "Brief explanation of SEO strengths and weaknesses",
+      readability_score: 80,
+      readability_analysis: "Brief explanation of readability assessment",
+      status: "review"
+    }
+    ⚠️ The key_takeaways field is MANDATORY for every blog post. Format: intro paragraph, then 5-8 bullet points with **bold action-driven heading:** followed by concise explanation, then an outro paragraph leading into the article.
+    ⚠️ Always self-assess SEO and readability scores (0-100) based on keyword usage, structure, and reading level.
+    ⚠️ Include the Key Takeaways section at the TOP of body_markdown as well (## Key Takeaways).
 - Content ideas → save_content('content_ideas', {...})
 - Ad creative briefs → save_content('creative_briefs', {
     brief_name, campaign_goal, target_audience, key_message, tone_and_mood,

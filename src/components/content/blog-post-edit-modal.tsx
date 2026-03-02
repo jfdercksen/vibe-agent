@@ -40,6 +40,7 @@ export function BlogPostEditModal({ post, open, onClose, onSaved }: BlogPostEdit
   const [status, setStatus] = useState<BlogPost['status']>(post?.status || 'outline')
   const [isLoading, setIsLoading] = useState(false)
   const [previewTab, setPreviewTab] = useState<'edit' | 'preview'>('edit')
+  const [keyTakeaways, setKeyTakeaways] = useState(post?.key_takeaways || '')
   const [seoScore, setSeoScore] = useState(post?.seo_score?.toString() || '')
   const [seoAnalysis, setSeoAnalysis] = useState(post?.seo_analysis || '')
   const [readabilityScore, setReadabilityScore] = useState(post?.readability_score?.toString() || '')
@@ -58,6 +59,7 @@ export function BlogPostEditModal({ post, open, onClose, onSaved }: BlogPostEdit
     setTargetKeyword(post?.target_keyword || '')
     setBodyMarkdown(post?.body_markdown || '')
     setStatus(post?.status || 'outline')
+    setKeyTakeaways(post?.key_takeaways || '')
     setSeoScore(post?.seo_score?.toString() || '')
     setSeoAnalysis(post?.seo_analysis || '')
     setReadabilityScore(post?.readability_score?.toString() || '')
@@ -95,6 +97,7 @@ export function BlogPostEditModal({ post, open, onClose, onSaved }: BlogPostEdit
         body_markdown: bodyMarkdown || null,
         word_count: wordCount || null,
         status: status as BlogPost['status'],
+        key_takeaways: keyTakeaways.trim() || null,
         seo_score: parsedSeoScore !== null && !isNaN(parsedSeoScore) ? Math.max(0, Math.min(100, parsedSeoScore)) : null,
         seo_analysis: seoAnalysis.trim() || null,
         readability_score: parsedReadabilityScore !== null && !isNaN(parsedReadabilityScore) ? Math.max(0, Math.min(100, parsedReadabilityScore)) : null,
@@ -229,6 +232,18 @@ export function BlogPostEditModal({ post, open, onClose, onSaved }: BlogPostEdit
               </TabsContent>
             </Tabs>
           </div>
+          {/* ── Key Takeaways Section ── */}
+          <div className="space-y-2">
+            <Label htmlFor="blog-key-takeaways">Key Takeaways</Label>
+            <Textarea
+              id="blog-key-takeaways"
+              value={keyTakeaways}
+              onChange={(e) => setKeyTakeaways(e.target.value)}
+              rows={6}
+              placeholder="Bullet-point summary of the article's key takeaways (Markdown supported)..."
+            />
+          </div>
+
           {/* ── SEO Section ── */}
           <div className="space-y-4 pt-4 border-t">
             <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">SEO</p>

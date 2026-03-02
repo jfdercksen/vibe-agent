@@ -181,8 +181,18 @@ reviewed side-by-side in the dashboard as a cohesive campaign.
     name: 'save_content',
     description: `Save generated content to the Supabase database.
 Use this after creating any content asset to persist it for the client.
-Always set status to "draft" unless the user explicitly approves it.
 The content will immediately appear in the dashboard.
+
+⚠️ STATUS VALUES — each table has its own allowed values. Using the wrong value causes a CHECK constraint error:
+- blog_posts: "outline" | "drafting" | "review" | "approved" | "published" | "archived" — use "review" for completed drafts
+- keyword_research: "identified" | "planned" | "in_progress" | "published" — use "identified" for new keywords
+- social_posts: "draft" | "review" | "approved" | "scheduled" | "published" | "rejected" — use "draft" for new posts
+- email_sequences: "draft" | "review" | "approved" | "active" | "paused" — use "draft" for new
+- emails: "draft" | "review" | "approved" | "sent" — use "draft" for new
+- content_ideas: "idea" | "researching" | "drafting" | "review" | "approved" | "published" | "archived" — use "idea" for new
+- content_calendar: "planned" | "created" | "scheduled" | "published" | "missed" — use "planned" for new
+- lead_magnets: "concept" | "drafting" | "review" | "live" | "retired" — use "concept" for new
+- creative_briefs: "draft" | "review" | "approved" | "in_production" | "complete" — use "draft" for new
 
 IMPORTANT — EMAIL SEQUENCES require a two-step save:
 1. Save the sequence first: save_content('email_sequences', { client_id, sequence_name, sequence_type, trigger_event, total_emails, status: 'draft' })
@@ -204,7 +214,7 @@ IMPORTANT — EMAIL SEQUENCES require a two-step save:
         },
         data: {
           type: 'object',
-          description: 'The record data to save. Must include client_id. Status defaults to "draft".',
+          description: 'The record data to save. Must include client_id. Use the correct status value for the target table (see tool description).',
         },
       },
       required: ['table', 'data'],

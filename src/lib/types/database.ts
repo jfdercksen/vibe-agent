@@ -199,6 +199,7 @@ export interface BlogPost {
   published_url: string | null
   published_at: string | null
   fact_check_notes: string | null
+  key_takeaways: string | null
   seo_score: number | null
   seo_analysis: string | null
   readability_score: number | null
