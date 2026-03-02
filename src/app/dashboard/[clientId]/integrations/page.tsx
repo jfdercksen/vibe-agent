@@ -1,15 +1,15 @@
 import { getClient } from '@/lib/data'
 import { notFound, redirect } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { ClientSettingsForm } from '@/components/settings/client-settings-form'
+import { IntegrationsForm } from '@/components/settings/integrations-form'
 
 export const dynamic = 'force-dynamic'
 
-interface SettingsPageProps {
+interface IntegrationsPageProps {
   params: Promise<{ clientId: string }>
 }
 
-export default async function SettingsPage({ params }: SettingsPageProps) {
+export default async function IntegrationsPage({ params }: IntegrationsPageProps) {
   const { clientId } = await params
 
   // Auth check
@@ -24,13 +24,15 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Client Settings</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Integrations</h1>
         <p className="text-muted-foreground">
-          Update your client profile and branding
+          Connect external services for publishing and automation
         </p>
       </div>
-
-      <ClientSettingsForm client={client} />
+      <IntegrationsForm
+        clientId={clientId}
+        integrations={client.integrations || {}}
+      />
     </div>
   )
 }
