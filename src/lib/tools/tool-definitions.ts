@@ -183,16 +183,28 @@ reviewed side-by-side in the dashboard as a cohesive campaign.
 Use this after creating any content asset to persist it for the client.
 The content will immediately appear in the dashboard.
 
-⚠️ STATUS VALUES — each table has its own allowed values. Using the wrong value causes a CHECK constraint error:
-- blog_posts: "outline" | "drafting" | "review" | "approved" | "published" | "archived" — use "review" for completed drafts
-- keyword_research: "identified" | "planned" | "in_progress" | "published" — use "identified" for new keywords
-- social_posts: "draft" | "review" | "approved" | "scheduled" | "published" | "rejected" — use "draft" for new posts
-- email_sequences: "draft" | "review" | "approved" | "active" | "paused" — use "draft" for new
-- emails: "draft" | "review" | "approved" | "sent" — use "draft" for new
-- content_ideas: "idea" | "researching" | "drafting" | "review" | "approved" | "published" | "archived" — use "idea" for new
-- content_calendar: "planned" | "created" | "scheduled" | "published" | "missed" — use "planned" for new
-- lead_magnets: "concept" | "drafting" | "review" | "live" | "retired" — use "concept" for new
-- creative_briefs: "draft" | "review" | "approved" | "in_production" | "complete" — use "draft" for new
+⚠️ EXACT COLUMN NAMES — you MUST use these exact field names. Do NOT invent columns that don't exist.
+
+brand_voices columns: client_id, personality_traits (JSONB array of strings), voice_dimensions (JSONB object: {formal_casual, reserved_bold, serious_playful, technical_simple} — numeric 1-10), vocabulary_embrace (text[]), vocabulary_avoid (text[]), anti_positioning (text), channel_notes (JSONB: {website, email, phone, linkedin, ads}), sample_on_brand (text[]), sample_off_brand (text[]), full_document (text — the complete brand voice document), is_active (boolean default true)
+⚠️ brand_voices does NOT have: name, voice_name, brand_name, tone_description, sample_content, is_primary, tone, style
+
+content_ideas columns: client_id, title (required), description, idea_type ("social"|"blog"|"email"|"video"|"lead_magnet"|"ad"|"other"), source_type ("prompt"|"voice_note"|"research"|"atomized"|"manual"), source_content, platforms (text[]), priority ("high"|"medium"|"low"), status, positioning_angle_id (uuid), tags (text[]), due_date
+⚠️ content_ideas does NOT have: content_type, idea_source, category, keyword, url
+
+positioning_angles columns: client_id, angle_number (int 1-5), framework, core_hook, psychology, headline_directions (text[]), anti_angle, risk, is_selected (boolean), score (JSONB: {differentiation, risk, memorability}), full_document
+
+keyword_research columns: client_id, keyword (required), search_volume (int), cpc (decimal), difficulty ("low"|"medium"|"high"), search_intent ("informational"|"transactional"|"navigational"|"commercial"), competitor_ranking, content_pillar, priority (1-5), is_quick_win (boolean), status, blog_post_id, data_source, raw_data (JSONB)
+
+⚠️ STATUS VALUES — each table has its own allowed values:
+- blog_posts: "outline" | "drafting" | "review" | "approved" | "published" | "archived"
+- keyword_research: "identified" | "planned" | "in_progress" | "published"
+- social_posts: "draft" | "review" | "approved" | "scheduled" | "published" | "rejected"
+- email_sequences: "draft" | "review" | "approved" | "active" | "paused"
+- emails: "draft" | "review" | "approved" | "sent"
+- content_ideas: "idea" | "researching" | "drafting" | "review" | "approved" | "published" | "archived"
+- content_calendar: "planned" | "created" | "scheduled" | "published" | "missed"
+- lead_magnets: "concept" | "drafting" | "review" | "live" | "retired"
+- creative_briefs: "draft" | "review" | "approved" | "in_production" | "complete"
 
 IMPORTANT — EMAIL SEQUENCES require a two-step save:
 1. Save the sequence first: save_content('email_sequences', { client_id, sequence_name, sequence_type, trigger_event, total_emails, status: 'draft' })
