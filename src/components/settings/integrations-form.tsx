@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import { Globe, Mail, Share2, Workflow, Eye, EyeOff, Loader2, Check, MessageCircle, Database, CheckCircle, XCircle, Sparkles } from 'lucide-react'
+import { Globe, Mail, Share2, Workflow, Eye, EyeOff, Loader2, Check, MessageCircle, Database, CheckCircle, XCircle, Sparkles, ChevronDown, ChevronRight } from 'lucide-react'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
 import type { IntegrationConfig } from '@/lib/types/database'
@@ -427,6 +427,7 @@ function WhatsAppCard({
   const [agentPrompt, setAgentPrompt] = useState(config?.agent_prompt || '')
   const [saving, setSaving] = useState(false)
   const [generating, setGenerating] = useState(false)
+  const [promptExpanded, setPromptExpanded] = useState(false)
 
   const hasPrompt = !!agentPrompt.trim()
 
@@ -512,16 +513,31 @@ function WhatsAppCard({
           </div>
         </div>
 
-        {/* Agent Prompt section */}
+        {/* Agent Prompt section — collapsible */}
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="wa-prompt">Agent Prompt</Label>
+          <button
+            type="button"
+            onClick={() => setPromptExpanded(!promptExpanded)}
+            className="flex items-center justify-between w-full text-left"
+          >
+            <div className="flex items-center gap-2">
+              {promptExpanded
+                ? <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                : <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              }
+              <Label className="cursor-pointer">Agent Prompt</Label>
+              {hasPrompt && !promptExpanded && (
+                <span className="text-[10px] text-green-600 bg-green-50 border border-green-200 rounded-full px-2 py-0.5">
+                  ✅ {agentPrompt.length.toLocaleString()} chars
+                </span>
+              )}
+            </div>
             {/* Generate button — only shown when no prompt exists yet */}
             {!hasPrompt && (
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleGeneratePrompt}
+                onClick={(e) => { e.stopPropagation(); handleGeneratePrompt() }}
                 disabled={generating}
                 className="h-7 gap-1.5 text-xs border-green-200 text-green-700 hover:bg-green-50 hover:text-green-800"
               >
@@ -531,9 +547,9 @@ function WhatsAppCard({
                 }
               </Button>
             )}
-          </div>
+          </button>
 
-          {/* Generating progress indicator */}
+          {/* Generating progress indicator — always visible */}
           {generating && (
             <div className="rounded-md bg-green-50 border border-green-200 px-3 py-2.5 text-xs text-green-700 space-y-1">
               <p className="font-medium">🤖 Generating your WhatsApp agent prompt...</p>
@@ -541,22 +557,27 @@ function WhatsAppCard({
             </div>
           )}
 
-          <Textarea
-            id="wa-prompt"
-            value={agentPrompt}
-            onChange={(e) => setAgentPrompt(e.target.value)}
-            placeholder={hasPrompt ? '' : 'Click "Generate with AI" above to auto-generate a prompt from your website and brand voice — or write your own here.'}
-            className="min-h-[180px] text-sm"
-          />
+          {/* Collapsible textarea */}
+          {promptExpanded && (
+            <>
+              <Textarea
+                id="wa-prompt"
+                value={agentPrompt}
+                onChange={(e) => setAgentPrompt(e.target.value)}
+                placeholder={hasPrompt ? '' : 'Click "Generate with AI" above to auto-generate a prompt from your website and brand voice — or write your own here.'}
+                className="min-h-[180px] text-sm"
+              />
 
-          {hasPrompt ? (
-            <p className="text-[11px] text-muted-foreground">
-              ✅ Agent prompt is set ({agentPrompt.length.toLocaleString()} chars). You can edit it directly above, then save.
-            </p>
-          ) : (
-            <p className="text-[11px] text-muted-foreground">
-              This is Vibe&apos;s complete instructions for responding to WhatsApp customers. Use &quot;Generate with AI&quot; to create one from your website and brand data, or write your own.
-            </p>
+              {hasPrompt ? (
+                <p className="text-[11px] text-muted-foreground">
+                  ✅ Agent prompt is set ({agentPrompt.length.toLocaleString()} chars). You can edit it directly above, then save.
+                </p>
+              ) : (
+                <p className="text-[11px] text-muted-foreground">
+                  This is Vibe&apos;s complete instructions for responding to WhatsApp customers. Use &quot;Generate with AI&quot; to create one from your website and brand data, or write your own.
+                </p>
+              )}
+            </>
           )}
         </div>
 
