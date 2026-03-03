@@ -94,7 +94,7 @@ export function KeywordsList({ keywords }: KeywordsListProps) {
         <CardContent>
           <Search className="mx-auto mb-2 h-8 w-8 text-muted-foreground/40" />
           <p className="text-muted-foreground">
-            No keyword research yet. Ask Claude to run keyword research using DataForSEO for this client.
+            No keyword research yet. Ask Vibe to run keyword research using DataForSEO for this client.
           </p>
         </CardContent>
       </Card>

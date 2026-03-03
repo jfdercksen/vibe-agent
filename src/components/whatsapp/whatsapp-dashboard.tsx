@@ -251,7 +251,7 @@ export function WhatsAppDashboard({
               </div>
               <div className="flex items-center gap-1.5">
                 <div className="h-2 w-2 rounded-full bg-green-500" />
-                <span className="text-xs text-muted-foreground">Claude is auto-replying</span>
+                <span className="text-xs text-muted-foreground">Vibe is auto-replying</span>
               </div>
             </div>
 
@@ -290,7 +290,7 @@ export function WhatsAppDashboard({
                 </Button>
               </div>
               <p className="text-[10px] text-muted-foreground mt-1.5">
-                This sends directly from your WhatsApp Business number. Claude will still auto-reply to future customer messages.
+                This sends directly from your WhatsApp Business number. Vibe will still auto-reply to future customer messages.
               </p>
             </div>
           </>

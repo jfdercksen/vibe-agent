@@ -49,7 +49,7 @@ export function MediaGrid({ assets }: MediaGridProps) {
         <CardContent>
           <ImageIcon className="mx-auto mb-2 h-8 w-8 text-muted-foreground/40" />
           <p className="text-muted-foreground">
-            No media assets yet. Claude will create entries here when generating images or uploading files.
+            No media assets yet. Vibe will create entries here when generating images or uploading files.
           </p>
         </CardContent>
       </Card>

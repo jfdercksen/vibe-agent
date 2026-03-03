@@ -1,5 +1,4 @@
-import { notFound, redirect } from 'next/navigation'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { notFound } from 'next/navigation'
 import { getWhatsAppConversations } from '@/lib/data'
 import { WhatsAppDashboard } from '@/components/whatsapp/whatsapp-dashboard'
 import { getClient } from '@/lib/data'
@@ -12,15 +11,6 @@ interface WhatsAppPageProps {
 
 export default async function WhatsAppPage({ params }: WhatsAppPageProps) {
   const { clientId } = await params
-
-  // Auth check — admin only
-  const supabase = await createServerSupabaseClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) redirect('/login')
-
-  const role = user.user_metadata?.role as string | undefined
-  if (role !== 'admin') redirect(`/dashboard/${clientId}`)
 
   const [client, conversations] = await Promise.all([
     getClient(clientId),
@@ -36,7 +26,7 @@ export default async function WhatsAppPage({ params }: WhatsAppPageProps) {
       <div>
         <h1 className="text-2xl font-bold tracking-tight">WhatsApp</h1>
         <p className="text-muted-foreground">
-          Real-time customer conversations — Claude auto-replies on your behalf
+          Real-time customer conversations — Vibe auto-replies on your behalf
         </p>
       </div>
 

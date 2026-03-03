@@ -119,7 +119,7 @@ export default async function HomePage() {
               <div className="mx-auto max-w-lg rounded-lg bg-muted p-4 text-left">
                 <div className="flex items-center gap-2 mb-2">
                   <Zap className="h-4 w-4 text-primary" />
-                  <span className="text-sm font-medium">Or use Claude Code CLI:</span>
+                  <span className="text-sm font-medium">Or use the CLI:</span>
                 </div>
                 <code className="text-sm text-muted-foreground">
                   &quot;Create a new client: Acme Corp. They&apos;re a SaaS company selling project management tools to small teams. Website: acme.com&quot;

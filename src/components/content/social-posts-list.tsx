@@ -603,7 +603,7 @@ export function SocialPostsList({ posts, clientId, n8nConfigured = false }: Soci
             <Share2 className="mx-auto mb-3 h-10 w-10 text-muted-foreground/40" />
             <p className="text-muted-foreground">
               {posts.length === 0
-                ? 'No social posts yet. Use Claude to generate posts for this client.'
+                ? 'No social posts yet. Use Vibe to generate posts for this client.'
                 : 'No posts match your current filters.'}
             </p>
           </CardContent>

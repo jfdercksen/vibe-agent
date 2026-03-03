@@ -49,7 +49,7 @@ function rejectDialogDesc(rejectStatus: string): string {
     case 'retired':  return 'This will mark it as retired. You can reactivate it later.'
     case 'paused':   return 'This will pause the email sequence. You can reactivate it later.'
     case 'archived': return 'This will archive it. You can restore it later.'
-    default:         return 'Add notes so Claude knows what to fix when revising.'
+    default:         return 'Add notes so Vibe knows what to fix when revising.'
   }
 }
 
@@ -126,7 +126,7 @@ export function ApprovalButtons({
         <Textarea
           placeholder={
             rejectStatus === 'rejected'
-              ? 'What needs to change? Be specific so Claude can revise it.'
+              ? 'What needs to change? Be specific so Vibe can revise it.'
               : 'Reason (optional)'
           }
           value={rejectNotes}

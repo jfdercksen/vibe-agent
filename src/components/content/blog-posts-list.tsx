@@ -617,7 +617,7 @@ export function BlogPostsList({ posts, clientId, n8nConfigured = false }: BlogPo
             <FileText className="mx-auto mb-2 h-8 w-8 text-muted-foreground/40" />
             <p className="text-muted-foreground">
               {posts.length === 0
-                ? 'No blog posts yet. Ask Claude to create SEO content for this client.'
+                ? 'No blog posts yet. Ask Vibe to create SEO content for this client.'
                 : 'No posts match your current filter.'}
             </p>
           </CardContent>

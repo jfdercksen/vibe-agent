@@ -486,7 +486,7 @@ function WhatsAppCard({
           <StatusDot connected={!!config?.access_token} />
         </div>
         <CardDescription>
-          Auto-reply to customer WhatsApp messages using Claude AI
+          Auto-reply to customer WhatsApp messages using Vibe AI
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -555,7 +555,7 @@ function WhatsAppCard({
             </p>
           ) : (
             <p className="text-[11px] text-muted-foreground">
-              This is Claude&apos;s complete instructions for responding to WhatsApp customers. Use &quot;Generate with AI&quot; to create one from your website and brand data, or write your own.
+              This is Vibe&apos;s complete instructions for responding to WhatsApp customers. Use &quot;Generate with AI&quot; to create one from your website and brand data, or write your own.
             </p>
           )}
         </div>

@@ -195,6 +195,9 @@ positioning_angles columns: client_id, angle_number (int 1-5), framework, core_h
 
 keyword_research columns: client_id, keyword (required), search_volume (int), cpc (decimal), difficulty ("low"|"medium"|"high"), search_intent ("informational"|"transactional"|"navigational"|"commercial"), competitor_ranking, content_pillar, priority (1-5), is_quick_win (boolean), status, blog_post_id, data_source, raw_data (JSONB)
 
+social_posts columns: client_id, content_idea_id (uuid, optional), platform (required: "linkedin"|"twitter"|"instagram"|"facebook"|"pinterest"|"tiktok"|"youtube"|"reddit"), post_type ("text"|"image"|"carousel"|"reel"|"story"|"thread"|"poll"|"video"|"quote_card"), hook (text — the opening line), body (text, required — the main post content), cta (text — call to action), hashtags (text[]), character_count (int), image_prompt (text), image_url (text), video_url (text), status, scheduled_for (timestamptz), batch_id (uuid), batch_label (text)
+⚠️ social_posts does NOT have: content, caption, cta_text, title, description, message, copy, post_content, text
+
 ⚠️ STATUS VALUES — each table has its own allowed values:
 - blog_posts: "outline" | "drafting" | "review" | "approved" | "published" | "archived"
 - keyword_research: "identified" | "planned" | "in_progress" | "published"
@@ -579,7 +582,7 @@ You must have the recordId — get it from crm_search if needed.`,
 
   {
     name: 'switch_model',
-    description: `Switch the Claude model used for the remainder of this conversation.
+    description: `Switch the AI model used for the remainder of this conversation.
 Call this FIRST (before any other tool) whenever you can judge the task complexity.
 
 Available models — choose based on what the task actually needs:
@@ -608,7 +611,7 @@ RULES:
         model: {
           type: 'string',
           enum: ['claude-haiku-4-5', 'claude-sonnet-4-5', 'claude-opus-4-5'],
-          description: 'The Claude model to use for subsequent API calls in this session',
+          description: 'The AI model to use for subsequent API calls in this session',
         },
         reason: {
           type: 'string',

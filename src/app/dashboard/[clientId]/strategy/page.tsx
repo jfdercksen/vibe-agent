@@ -35,7 +35,7 @@ export default async function StrategyPage({ params }: StrategyPageProps) {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Brand Foundation</h1>
           <p className="text-muted-foreground">
-            Everything Claude knows about {client.display_name || client.name} — voice, positioning, and identity
+            Everything Vibe knows about {client.display_name || client.name} — voice, positioning, and identity
           </p>
         </div>
         {hasFoundation

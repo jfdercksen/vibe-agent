@@ -26,12 +26,7 @@ export default async function ChatPage({ params }: ChatPageProps) {
   const role = user.user_metadata?.role as string | undefined
   const isAdmin = role === 'admin'
 
-  // Client users do not have access to Chat — redirect to their dashboard overview
-  if (!isAdmin) {
-    redirect(`/dashboard/${clientId}`)
-  }
-
-  // Admin only from here — fetch client record
+  // Fetch client record
   const adminClient = createAdminClient()
   const { data: client, error } = await adminClient
     .from('clients')
@@ -50,7 +45,7 @@ export default async function ChatPage({ params }: ChatPageProps) {
         clientName={client.display_name || client.name}
         onboardingStage={client.onboarding_stage || 1}
         onboardingCompleted={client.onboarding_completed || false}
-        isMarketer={true} // Only admins reach this point
+        isMarketer={isAdmin}
       />
     </div>
   )

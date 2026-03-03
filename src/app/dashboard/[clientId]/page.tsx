@@ -68,7 +68,7 @@ export default async function OverviewPage({ params }: OverviewPageProps) {
       <Card>
         <CardHeader>
           <CardTitle>Recent Activity</CardTitle>
-          <CardDescription>Latest content created by Claude</CardDescription>
+          <CardDescription>Latest content created by Vibe</CardDescription>
         </CardHeader>
         <CardContent>
           {activity.length > 0 ? (
@@ -98,7 +98,7 @@ export default async function OverviewPage({ params }: OverviewPageProps) {
           ) : (
             <div className="py-8 text-center text-muted-foreground">
               <Lightbulb className="mx-auto mb-2 h-8 w-8 opacity-40" />
-              <p>No activity yet. Use Claude Code to start creating content for this client.</p>
+              <p>No activity yet. Use Chat with Vibe to start creating content for this client.</p>
             </div>
           )}
         </CardContent>
