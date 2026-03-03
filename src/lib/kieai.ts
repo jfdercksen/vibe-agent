@@ -52,25 +52,31 @@ async function runSingleTask(
   const taskId = createResult.data?.taskId
   if (!taskId) throw new Error('Kie.ai: No taskId in response')
 
-  // Poll for completion
+  // Poll for completion — Flux-2 Pro can take 3-5 minutes under load
   const startTime = Date.now()
-  const maxMs = 240_000 // 4 minutes
+  const maxMs = 360_000 // 6 minutes
 
   while (Date.now() - startTime < maxMs) {
     const elapsed = Date.now() - startTime
     // Adaptive delay: fast early, slow down to avoid hammering
-    const delay = elapsed < 30_000 ? 4000 : elapsed < 90_000 ? 6000 : 10_000
+    const delay = elapsed < 30_000 ? 4000 : elapsed < 120_000 ? 6000 : 10_000
     await new Promise(r => setTimeout(r, delay))
 
-    const pollRes = await fetch(
-      `https://api.kie.ai/api/v1/jobs/recordInfo?taskId=${taskId}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${kieKey}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    )
+    let pollRes: Response
+    try {
+      pollRes = await fetch(
+        `https://api.kie.ai/api/v1/jobs/recordInfo?taskId=${taskId}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${kieKey}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      )
+    } catch (fetchErr) {
+      console.warn(`[kieai] Poll network error for task ${taskId}:`, fetchErr)
+      continue
+    }
 
     if (!pollRes.ok) {
       console.warn(`[kieai] Poll failed (${pollRes.status}) for task ${taskId}`)
@@ -93,18 +99,21 @@ async function runSingleTask(
       if (urls.length === 0) {
         throw new Error(`Kie.ai task ${taskId} succeeded but returned no URLs`)
       }
+      console.log(`[kieai] Task ${taskId} completed in ${Math.round(elapsed / 1000)}s`)
       return urls[0]
     }
 
     if (state === 'failed' || state === 'error') {
-      throw new Error(`Kie.ai task ${taskId} failed: ${JSON.stringify(data).slice(0, 200)}`)
+      const errMsg = data.failReason || data.errorMessage || data.msg || JSON.stringify(data).slice(0, 300)
+      console.error(`[kieai] Task ${taskId} FAILED after ${Math.round(elapsed / 1000)}s:`, errMsg)
+      throw new Error(`Kie.ai task ${taskId} failed: ${errMsg}`)
     }
 
     // Still processing (queued / running) — keep polling
     console.log(`[kieai] Task ${taskId} state: ${state || 'pending'} (${Math.round(elapsed / 1000)}s)`)
   }
 
-  throw new Error(`Kie.ai task ${taskId} timed out after 4 minutes`)
+  throw new Error(`Kie.ai task ${taskId} timed out after 6 minutes`)
 }
 
 // ── Public: Generate image(s) ─────────────────────────────────────────────────
