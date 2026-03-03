@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
 
   // Send via Meta WhatsApp Cloud API
   const metaRes = await fetch(
-    `https://graph.facebook.com/v19.0/${whatsapp.phone_number_id}/messages`,
+    `https://graph.facebook.com/v21.0/${whatsapp.phone_number_id}/messages`,
     {
       method: 'POST',
       headers: {

@@ -5,6 +5,9 @@ import { searchByPhone, addNote } from '@/lib/crm/vtiger'
 import type { VtigerConfig, VtigerContact } from '@/lib/crm/vtiger'
 import type { IntegrationConfig } from '@/lib/types/database'
 
+// Allow up to 60s — Claude API call + Meta send can exceed the 15s default
+export const maxDuration = 60
+
 // ── GET — Meta webhook verification ───────────────────────────────────────
 // Meta sends a GET request with hub.mode, hub.verify_token, hub.challenge
 // We look up the client by verify_token and echo back hub.challenge
@@ -202,7 +205,7 @@ export async function POST(request: NextRequest) {
     let aiReply: string
     try {
       const response = await anthropic.messages.create({
-        model: 'claude-opus-4-5',
+        model: 'claude-sonnet-4-5',
         max_tokens: 1024,
         system: fullSystemPrompt,
         messages: conversationHistory,
@@ -244,7 +247,7 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Send reply via Meta WhatsApp Cloud API ─────────────────────────────
-    const metaUrl = `https://graph.facebook.com/v19.0/${phoneNumberId}/messages`
+    const metaUrl = `https://graph.facebook.com/v21.0/${phoneNumberId}/messages`
     const metaRes = await fetch(metaUrl, {
       method: 'POST',
       headers: {
