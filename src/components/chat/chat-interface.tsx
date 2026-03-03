@@ -318,6 +318,7 @@ export function ChatInterface({
           <PromptLibrary
             onSelectPrompt={handlePromptSelect}
             disabled={isLoading}
+            clientName={clientName}
           />
         )}
       </div>

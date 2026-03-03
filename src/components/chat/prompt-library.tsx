@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { PROMPT_LIBRARY } from '@/lib/prompt-library'
+import { useState, useMemo } from 'react'
+import { buildPromptLibrary } from '@/lib/prompt-library'
 import { cn } from '@/lib/utils'
 import { ChevronDown, ChevronRight, Sparkles, Search, X } from 'lucide-react'
 import { Input } from '@/components/ui/input'
@@ -9,17 +9,20 @@ import { Input } from '@/components/ui/input'
 interface PromptLibraryProps {
   onSelectPrompt: (prompt: string) => void
   disabled?: boolean
+  clientName: string
 }
 
-export function PromptLibrary({ onSelectPrompt, disabled }: PromptLibraryProps) {
+export function PromptLibrary({ onSelectPrompt, disabled, clientName }: PromptLibraryProps) {
   const [openCategory, setOpenCategory] = useState<string | null>('social')
   const [search, setSearch] = useState('')
+
+  const promptLibrary = useMemo(() => buildPromptLibrary(clientName), [clientName])
 
   const searchLower = search.toLowerCase().trim()
 
   // Flatten for search results
   const searchResults = searchLower
-    ? PROMPT_LIBRARY.flatMap((cat) =>
+    ? promptLibrary.flatMap((cat) =>
         cat.prompts
           .filter(
             (p) =>
@@ -83,7 +86,7 @@ export function PromptLibrary({ onSelectPrompt, disabled }: PromptLibraryProps) 
           )
         ) : (
           /* Category accordion */
-          PROMPT_LIBRARY.map((category) => {
+          promptLibrary.map((category) => {
             const isOpen = openCategory === category.id
             return (
               <div key={category.id} className="mb-1">
