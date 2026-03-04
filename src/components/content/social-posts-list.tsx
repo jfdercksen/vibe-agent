@@ -39,6 +39,8 @@ import {
   ExternalLink,
   LayoutGrid,
   Layers,
+  X,
+  Plus,
 } from 'lucide-react'
 import { formatDistanceToNow, format } from 'date-fns'
 import type { SocialPost } from '@/lib/types/database'
@@ -94,15 +96,18 @@ function PostExpandModal({
   onClose,
   clientId,
   onImageSaved,
+  onRemoveImage,
 }: {
   post: SocialPost | null
   open: boolean
   onClose: () => void
   clientId: string
-  onImageSaved: (postId: string, imageUrl: string) => void
+  onImageSaved: (postId: string, imageUrl: string, append?: boolean) => void
+  onRemoveImage: (postId: string, imageUrl?: string) => void
 }) {
   const [copied, setCopied] = useState(false)
   const [showImageGen, setShowImageGen] = useState(false)
+  const [imageGenMode, setImageGenMode] = useState<'replace' | 'add'>('add')
 
   if (!post) return null
 
@@ -183,79 +188,106 @@ function PostExpandModal({
           </div>
 
           {/* ── Image section ── */}
-          <div className="border rounded-lg overflow-hidden">
-            {/* If post already has an image — show it */}
-            {post.image_url ? (
-              <div>
-                <div className="relative">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={post.image_url}
-                    alt="Post image"
-                    className="w-full object-cover max-h-64"
-                  />
-                  <a
-                    href={post.image_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="absolute top-2 right-2 rounded bg-black/50 p-1.5 hover:bg-black/70 transition-colors"
-                    title="Open full image"
-                  >
-                    <ExternalLink className="h-3.5 w-3.5 text-white" />
-                  </a>
-                </div>
-                <div className="p-3 bg-muted/30 flex items-center justify-between gap-2">
-                  <span className="text-xs text-muted-foreground flex items-center gap-1">
-                    <ImageIcon className="h-3.5 w-3.5" /> Post image attached
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7 gap-1.5 text-xs"
-                    onClick={() => setShowImageGen((v) => !v)}
-                  >
-                    <RefreshCw className="h-3 w-3" />
-                    {showImageGen ? 'Hide Generator' : 'Change Image'}
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              /* No image yet — show generate button */
-              <div className="p-3 flex items-center justify-between gap-2 bg-muted/20">
-                <span className="text-xs text-muted-foreground">No image attached</span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 gap-1.5 text-xs"
-                  onClick={() => setShowImageGen((v) => !v)}
-                >
-                  <ImageIcon className="h-3.5 w-3.5" />
-                  {showImageGen ? 'Hide Generator' : 'Generate Image'}
-                </Button>
-              </div>
-            )}
+          {(() => {
+            const allImages = post.image_urls?.length > 0 ? post.image_urls : (post.image_url ? [post.image_url] : [])
+            const hasImages = allImages.length > 0
 
-            {/* Inline image generator — expands when toggled */}
-            {showImageGen && (
-              <div className="border-t p-3">
-                <ImageGeneratorPanel
-                  clientId={clientId}
-                  defaultUseCase="social_graphic"
-                  defaultPrompt={imagePrompt}
-                  referenceTable="social_posts"
-                  referenceId={post.id}
-                  compact
-                  onImageSaved={(asset) => {
-                    const url = 'file_url' in asset ? asset.file_url : ''
-                    if (url) {
-                      onImageSaved(post.id, url)
-                      setShowImageGen(false)
-                    }
-                  }}
-                />
+            return (
+              <div className="border rounded-lg overflow-hidden">
+                {hasImages ? (
+                  <div>
+                    {/* Multi-image grid or single image */}
+                    {allImages.length > 1 ? (
+                      <div className="grid grid-cols-2 gap-1 p-1">
+                        {allImages.map((url, idx) => (
+                          <div key={url} className="relative group/img rounded-lg overflow-hidden">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={url} alt={`Image ${idx + 1}`} className="w-full object-cover h-32" />
+                            <button
+                              onClick={() => onRemoveImage(post.id, url)}
+                              className="absolute top-1 left-1 rounded bg-black/50 p-1 opacity-0 group-hover/img:opacity-100 transition-opacity hover:bg-red-600/80"
+                              title="Remove image"
+                            >
+                              <X className="h-3 w-3 text-white" />
+                            </button>
+                            <a href={url} target="_blank" rel="noopener noreferrer"
+                              className="absolute top-1 right-1 rounded bg-black/50 p-1 opacity-0 group-hover/img:opacity-100 transition-opacity hover:bg-black/70">
+                              <ExternalLink className="h-3 w-3 text-white" />
+                            </a>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="relative group/img">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={allImages[0]} alt="Post image" className="w-full object-cover max-h-64" />
+                        <button
+                          onClick={() => onRemoveImage(post.id, allImages[0])}
+                          className="absolute top-2 left-2 rounded bg-black/50 p-1.5 opacity-0 group-hover/img:opacity-100 transition-opacity hover:bg-red-600/80"
+                          title="Remove image"
+                        >
+                          <X className="h-3.5 w-3.5 text-white" />
+                        </button>
+                        <a href={allImages[0]} target="_blank" rel="noopener noreferrer"
+                          className="absolute top-2 right-2 rounded bg-black/50 p-1.5 hover:bg-black/70 transition-colors"
+                          title="Open full image">
+                          <ExternalLink className="h-3.5 w-3.5 text-white" />
+                        </a>
+                      </div>
+                    )}
+                    <div className="p-3 bg-muted/30 flex items-center justify-between gap-2">
+                      <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        <ImageIcon className="h-3.5 w-3.5" />
+                        {allImages.length > 1 ? `${allImages.length} images attached` : 'Post image attached'}
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs"
+                          onClick={() => { setImageGenMode('add'); setShowImageGen((v) => !v) }}>
+                          <Plus className="h-3 w-3" />
+                          {showImageGen && imageGenMode === 'add' ? 'Hide' : 'Add Image'}
+                        </Button>
+                        <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs"
+                          onClick={() => { setImageGenMode('replace'); setShowImageGen((v) => !v) }}>
+                          <RefreshCw className="h-3 w-3" />
+                          {showImageGen && imageGenMode === 'replace' ? 'Hide' : 'Replace All'}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-3 flex items-center justify-between gap-2 bg-muted/20">
+                    <span className="text-xs text-muted-foreground">No image attached</span>
+                    <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs"
+                      onClick={() => { setImageGenMode('add'); setShowImageGen((v) => !v) }}>
+                      <ImageIcon className="h-3.5 w-3.5" />
+                      {showImageGen ? 'Hide Generator' : 'Generate Image'}
+                    </Button>
+                  </div>
+                )}
+
+                {/* Inline image generator */}
+                {showImageGen && (
+                  <div className="border-t p-3">
+                    <ImageGeneratorPanel
+                      clientId={clientId}
+                      defaultUseCase="social_graphic"
+                      defaultPrompt={imagePrompt}
+                      referenceTable="social_posts"
+                      referenceId={post.id}
+                      compact
+                      onImageSaved={(asset) => {
+                        const url = 'file_url' in asset ? asset.file_url : ''
+                        if (url) {
+                          onImageSaved(post.id, url, imageGenMode === 'add')
+                          setShowImageGen(false)
+                        }
+                      }}
+                    />
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            )
+          })()}
 
           {/* Approval actions */}
           <div className="flex justify-end pt-2">
@@ -289,13 +321,52 @@ export function SocialPostsList({ posts, clientId, n8nConfigured = false }: Soci
   }
 
   // Called when a new image is selected — persist to DB + update UI instantly
-  const handleImageSaved = async (postId: string, imageUrl: string) => {
-    applyLocalUpdate(postId, { image_url: imageUrl })
-    await fetch('/api/content/update', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ table: 'social_posts', id: postId, fields: { image_url: imageUrl } }),
-    })
+  const handleImageSaved = async (postId: string, imageUrl: string, append = false) => {
+    if (append) {
+      const currentPost = mergedPosts.find(p => p.id === postId)
+      const currentUrls = currentPost?.image_urls || (currentPost?.image_url ? [currentPost.image_url] : [])
+      const newUrls = [...currentUrls, imageUrl]
+      const primaryUrl = currentUrls[0] || imageUrl
+      applyLocalUpdate(postId, { image_urls: newUrls, image_url: primaryUrl })
+      await fetch('/api/content/update', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ table: 'social_posts', id: postId, fields: { image_urls: newUrls, image_url: primaryUrl } }),
+      })
+    } else {
+      applyLocalUpdate(postId, { image_url: imageUrl, image_urls: [imageUrl] })
+      await fetch('/api/content/update', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ table: 'social_posts', id: postId, fields: { image_url: imageUrl, image_urls: [imageUrl] } }),
+      })
+    }
+  }
+
+  // Remove an image from a post (or remove specific one from multi-image)
+  const handleRemoveImage = async (postId: string, imageUrl?: string) => {
+    const currentPost = mergedPosts.find(p => p.id === postId)
+    const currentUrls = currentPost?.image_urls || (currentPost?.image_url ? [currentPost.image_url] : [])
+
+    if (imageUrl && currentUrls.length > 1) {
+      // Remove specific image from array
+      const newUrls = currentUrls.filter(u => u !== imageUrl)
+      const newPrimary = newUrls[0] || null
+      applyLocalUpdate(postId, { image_urls: newUrls, image_url: newPrimary })
+      await fetch('/api/content/update', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ table: 'social_posts', id: postId, fields: { image_urls: newUrls, image_url: newPrimary } }),
+      })
+    } else {
+      // Remove all images
+      applyLocalUpdate(postId, { image_url: null, image_urls: [] })
+      await fetch('/api/content/update', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ table: 'social_posts', id: postId, fields: { image_url: null, image_urls: [] } }),
+      })
+    }
   }
 
   const mergedPosts = useMemo(
@@ -476,17 +547,29 @@ export function SocialPostsList({ posts, clientId, n8nConfigured = false }: Soci
                       </div>
                     )}
 
-                    {post.image_url && (
+                    {(post.image_urls?.length > 0 || post.image_url) && (
                       <div className="rounded-lg overflow-hidden border relative group/img">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
-                          src={post.image_url}
+                          src={post.image_urls?.[0] || post.image_url || ''}
                           alt="Post image"
                           className="w-full object-cover h-32"
                           loading="lazy"
                         />
+                        {post.image_urls && post.image_urls.length > 1 && (
+                          <div className="absolute bottom-1.5 left-1.5 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white font-medium">
+                            +{post.image_urls.length - 1} more
+                          </div>
+                        )}
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleRemoveImage(post.id, post.image_urls?.[0] || post.image_url || undefined) }}
+                          className="absolute top-1.5 left-1.5 rounded bg-black/50 p-1 opacity-0 group-hover/img:opacity-100 transition-opacity hover:bg-red-600/80"
+                          title="Remove image"
+                        >
+                          <X className="h-3 w-3 text-white" />
+                        </button>
                         <a
-                          href={post.image_url}
+                          href={post.image_urls?.[0] || post.image_url || ''}
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}
@@ -575,10 +658,10 @@ export function SocialPostsList({ posts, clientId, n8nConfigured = false }: Soci
                         ].filter(Boolean).join(' — ')}
                         referenceTable="social_posts"
                         referenceId={post.id}
-                        label={post.image_url ? 'Change Image' : 'Generate Image'}
+                        label={post.image_urls?.length > 0 || post.image_url ? 'Add / Change Image' : 'Generate Image'}
                         onImageSaved={(asset) => {
                           const url = 'file_url' in asset ? asset.file_url : ''
-                          if (url) handleImageSaved(post.id, url)
+                          if (url) handleImageSaved(post.id, url, true)
                         }}
                       />
                     </div>
@@ -617,6 +700,7 @@ export function SocialPostsList({ posts, clientId, n8nConfigured = false }: Soci
         onClose={() => setExpandedPost(null)}
         clientId={clientId}
         onImageSaved={handleImageSaved}
+        onRemoveImage={handleRemoveImage}
       />
 
       {/* Edit Modal */}

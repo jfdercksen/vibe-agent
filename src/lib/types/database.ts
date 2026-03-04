@@ -169,6 +169,7 @@ export interface SocialPost {
   character_count: number | null
   image_prompt: string | null
   image_url: string | null
+  image_urls: string[]          // Multiple images for carousels; image_url is the primary/first
   video_url: string | null
   status: PostStatus
   scheduled_for: string | null

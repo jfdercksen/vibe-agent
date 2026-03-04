@@ -13,7 +13,7 @@ import { ScheduleModal } from '@/components/content/schedule-modal'
 import { BlogPostEditModal } from '@/components/content/blog-post-edit-modal'
 import { ImageGeneratorTrigger, ImageGeneratorPanel } from '@/components/images/image-generator-panel'
 import { PublishButton } from '@/components/content/publish-button'
-import { FileText, Search, Calendar, Eye, Copy, Check, Expand, ExternalLink, Pencil, RefreshCw, Image as ImageIcon, BarChart3, Tag, ChevronDown, ChevronUp } from 'lucide-react'
+import { FileText, Search, Calendar, Eye, Copy, Check, Expand, ExternalLink, Pencil, RefreshCw, Image as ImageIcon, BarChart3, Tag, ChevronDown, ChevronUp, X } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import ReactMarkdown from 'react-markdown'
 import type { BlogPost } from '@/lib/types/database'
@@ -72,7 +72,7 @@ function ProcessingLogSection({ log }: { log: string }) {
   )
 }
 
-function BlogExpandModal({ post, open, onClose, clientId, onImageSaved }: { post: BlogPost | null; open: boolean; onClose: () => void; clientId: string; onImageSaved: (postId: string, imageUrl: string) => void }) {
+function BlogExpandModal({ post, open, onClose, clientId, onImageSaved, onRemoveImage }: { post: BlogPost | null; open: boolean; onClose: () => void; clientId: string; onImageSaved: (postId: string, imageUrl: string) => void; onRemoveImage: (postId: string) => void }) {
   const [copied, setCopied] = useState(false)
   const [tab, setTab] = useState<'preview' | 'raw'>('preview')
   const [showImageGen, setShowImageGen] = useState(false)
@@ -287,15 +287,24 @@ function BlogExpandModal({ post, open, onClose, clientId, onImageSaved }: { post
                     alt={post.alt_text || post.title}
                     className="w-full object-cover max-h-56"
                   />
-                  <a
-                    href={post.featured_image_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="absolute top-2 right-2 rounded bg-black/50 p-1.5 hover:bg-black/70 transition-colors"
-                    title="Open full image"
-                  >
-                    <ExternalLink className="h-3.5 w-3.5 text-white" />
-                  </a>
+                  <div className="absolute top-2 right-2 flex items-center gap-1">
+                    <button
+                      onClick={() => onRemoveImage(post.id)}
+                      className="rounded bg-black/50 p-1.5 hover:bg-red-600 transition-colors"
+                      title="Remove image"
+                    >
+                      <X className="h-3.5 w-3.5 text-white" />
+                    </button>
+                    <a
+                      href={post.featured_image_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="rounded bg-black/50 p-1.5 hover:bg-black/70 transition-colors"
+                      title="Open full image"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5 text-white" />
+                    </a>
+                  </div>
                 </div>
                 <div className="p-3 bg-muted/30 flex items-center justify-between gap-2">
                   <span className="text-xs text-muted-foreground flex items-center gap-1">
@@ -378,6 +387,15 @@ export function BlogPostsList({ posts, clientId, n8nConfigured = false }: BlogPo
     })
   }
 
+  const handleRemoveImage = async (postId: string) => {
+    applyLocalUpdate(postId, { featured_image_url: null })
+    await fetch('/api/content/update', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ table: 'blog_posts', id: postId, fields: { featured_image_url: null } }),
+    })
+  }
+
   const mergedPosts = useMemo(
     () => posts.map((p) => localUpdates[p.id] ? { ...p, ...localUpdates[p.id] } : p),
     [posts, localUpdates]
@@ -436,6 +454,13 @@ export function BlogPostsList({ posts, clientId, n8nConfigured = false }: BlogPo
                       loading="lazy"
                       decoding="async"
                     />
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleRemoveImage(post.id) }}
+                      className="absolute top-2 right-2 rounded bg-black/50 p-1 opacity-0 group-hover:opacity-100 hover:bg-red-600 transition-all"
+                      title="Remove image"
+                    >
+                      <X className="h-3.5 w-3.5 text-white" />
+                    </button>
                   </div>
                 )}
 
@@ -630,6 +655,7 @@ export function BlogPostsList({ posts, clientId, n8nConfigured = false }: BlogPo
         onClose={() => setExpandedPost(null)}
         clientId={clientId}
         onImageSaved={handleImageSaved}
+        onRemoveImage={handleRemoveImage}
       />
 
       {/* Edit Modal */}
