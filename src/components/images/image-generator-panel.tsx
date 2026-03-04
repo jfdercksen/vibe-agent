@@ -178,7 +178,7 @@ export function ImageGeneratorPanel({
   // Edit mode state
   const [editImageUrl, setEditImageUrl]     = useState('')
   const [editInstruction, setEditInstruction] = useState('')
-  const [editModel, setEditModel]           = useState<'nano_banana' | 'flux_kontext' | 'kieai_flux'>('kieai_flux')
+  const [editModel, setEditModel]           = useState<'nano_banana' | 'flux_kontext' | 'kieai_flux' | 'recraft'>('kieai_flux')
   const [editNumImages, setEditNumImages]   = useState(2)
   const [editResolution, setEditResolution] = useState<'1K' | '2K' | '4K'>('1K')
   const [editing, setEditing]               = useState(false)
@@ -765,12 +765,23 @@ export function ImageGeneratorPanel({
                 >
                   FLUX Kontext
                 </button>
+                <button
+                  onClick={() => setEditModel('recraft')}
+                  className={cn(
+                    'rounded border px-2.5 py-1.5 text-xs font-medium transition-colors',
+                    editModel === 'recraft' ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-muted'
+                  )}
+                >
+                  Recraft V4
+                </button>
               </div>
               <p className="text-[10px] text-muted-foreground">
                 {editModel === 'kieai_flux'
                   ? 'Flux-2 Pro image-to-image — fast, high quality edits'
                   : editModel === 'nano_banana'
                   ? 'Nano Banana Pro — best semantic understanding'
+                  : editModel === 'recraft'
+                  ? 'Recraft V4 — logo variations, style transfer, vector-style edits'
                   : 'FLUX Kontext — precise style/object changes'}
               </p>
             </div>
@@ -833,7 +844,7 @@ export function ImageGeneratorPanel({
             {editing ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Editing with {editModel === 'kieai_flux' ? 'Flux-2 Pro' : editModel === 'nano_banana' ? 'Nano Banana Pro' : 'FLUX Kontext'}...
+                Editing with {editModel === 'kieai_flux' ? 'Flux-2 Pro' : editModel === 'nano_banana' ? 'Nano Banana Pro' : editModel === 'recraft' ? 'Recraft V4' : 'FLUX Kontext'}...
               </>
             ) : (
               <>

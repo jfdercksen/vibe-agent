@@ -449,7 +449,7 @@ Always import the chosen photo to the Media Library after presenting options to 
     name: 'edit_image',
     description: `Edit an existing image using AI by giving plain-English instructions.
 Uses Nano Banana Pro (Google Gemini 3 Pro Image) by default — the most powerful semantic image editor.
-Alternative: FLUX Kontext Pro for precise style/object changes.
+Alternatives: FLUX Kontext Pro for precise style/object changes, Recraft V4 for logo variations and vector-style edits.
 
 Use this when the user wants to:
 - Change the background ("make the background white", "put it on a beach")
@@ -457,6 +457,7 @@ Use this when the user wants to:
 - Add or remove elements ("remove the person on the right", "add a coffee cup")
 - Change style ("make it look like a watercolor painting", "add dramatic lighting")
 - Adjust mood/atmosphere ("make it look more luxurious", "warmer lighting")
+- Create logo or brand mark variations → use editModel: "recraft"
 
 Always edit from an existing image URL (from Media Library or any public URL).
 Edited images are automatically saved to the client's Media Library.
@@ -474,8 +475,8 @@ Generate 2 variations so the user can choose.`,
         },
         editModel: {
           type: 'string',
-          enum: ['nano_banana', 'flux_kontext', 'kieai_flux'],
-          description: 'Edit engine to use. nano_banana = Nano Banana Pro fal.ai (best semantic understanding, default). flux_kontext = FLUX Kontext Pro fal.ai (precise object/style changes). kieai_flux = Flux-2 Pro Kie.ai (cheaper style transfer and background swaps).',
+          enum: ['nano_banana', 'flux_kontext', 'kieai_flux', 'recraft'],
+          description: 'Edit engine to use. nano_banana = Nano Banana Pro fal.ai (best semantic understanding, default). flux_kontext = FLUX Kontext Pro fal.ai (precise object/style changes). kieai_flux = Flux-2 Pro Kie.ai (cheaper style transfer and background swaps). recraft = Recraft V4 via Replicate (best for logo variations, style transfer, vector-style edits).',
         },
         resolution: {
           type: 'string',

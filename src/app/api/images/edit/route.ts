@@ -133,6 +133,86 @@ async function pollFalQueue(
   throw new Error('Image edit timed out — please try again')
 }
 
+// ── Recraft V4 via Replicate — style-accurate edits, logos, vectors ───────────
+// Uses Recraft V4 image-to-image on Replicate. Best for style transfer,
+// logo/mark variations, and vector-style transformations.
+async function editWithRecraft(
+  imageUrl: string,
+  instruction: string,
+  width: number,
+  height: number,
+  numImages: number
+): Promise<{ images: Array<{ url: string; content_type?: string }> }> {
+  const replicateKey = process.env.REPLICATE_API_KEY
+  if (!replicateKey) throw new Error('REPLICATE_API_KEY not configured')
+
+  const allImages: Array<{ url: string; content_type?: string }> = []
+
+  // Replicate Recraft returns 1 image per call, so loop for multiple variations
+  for (let i = 0; i < Math.min(numImages, 4); i++) {
+    const submitRes = await fetch('https://api.replicate.com/v1/models/recraft-ai/recraft-v4/predictions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${replicateKey}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'wait=60',
+      },
+      body: JSON.stringify({
+        input: {
+          prompt: instruction,
+          image: imageUrl,
+          width,
+          height,
+          output_format: 'jpg',
+          output_quality: 90,
+        },
+      }),
+    })
+
+    if (!submitRes.ok) {
+      const errText = await submitRes.text()
+      throw new Error(`Recraft edit failed (${submitRes.status}): ${errText}`)
+    }
+
+    const prediction = await submitRes.json()
+
+    if (prediction.status === 'succeeded' && prediction.output) {
+      const urls = Array.isArray(prediction.output) ? prediction.output : [prediction.output]
+      allImages.push(...urls.map((url: string) => ({ url })))
+    } else {
+      // Poll if not immediately ready
+      const predictionId = prediction.id
+      const startTime = Date.now()
+      const maxMs = 240_000
+
+      let completed = false
+      while (Date.now() - startTime < maxMs) {
+        const elapsed = Date.now() - startTime
+        const delay = elapsed < 30_000 ? 3000 : elapsed < 90_000 ? 5000 : 8000
+        await new Promise(r => setTimeout(r, delay))
+
+        const statusRes = await fetch(`https://api.replicate.com/v1/predictions/${predictionId}`, {
+          headers: { 'Authorization': `Bearer ${replicateKey}` },
+        })
+        if (!statusRes.ok) continue
+        const status = await statusRes.json()
+
+        if (status.status === 'succeeded' && status.output) {
+          const urls = Array.isArray(status.output) ? status.output : [status.output]
+          allImages.push(...urls.map((url: string) => ({ url })))
+          completed = true
+          break
+        } else if (status.status === 'failed') {
+          throw new Error(`Recraft edit failed: ${status.error || 'Unknown error'}`)
+        }
+      }
+      if (!completed) throw new Error('Recraft edit timed out')
+    }
+  }
+
+  return { images: allImages }
+}
+
 // ── Upload edited image to Supabase Storage ───────────────────────────────────
 async function uploadToSupabase(
   imageUrl: string,
@@ -164,7 +244,7 @@ export async function POST(request: NextRequest) {
     const {
       imageUrl,         // The source image URL to edit
       instruction,      // Text instruction: "make the background white", "change shirt to red"
-      editModel = 'nano_banana',  // 'nano_banana' | 'flux_kontext'
+      editModel = 'nano_banana',  // 'nano_banana' | 'flux_kontext' | 'kieai_flux' | 'recraft'
       aspectRatio = 'auto',
       resolution = '1K',
       numImages = 2,
@@ -185,7 +265,10 @@ export async function POST(request: NextRequest) {
     let result: { images: Array<{ url: string; content_type?: string }> }
     let modelLabel: string
 
-    if (editModel === 'flux_kontext') {
+    if (editModel === 'recraft') {
+      result = await editWithRecraft(imageUrl, instruction, width, height, numImages)
+      modelLabel = 'Recraft V4'
+    } else if (editModel === 'flux_kontext') {
       result = await editWithFluxKontext(imageUrl, instruction, width, height, numImages)
       modelLabel = 'FLUX Kontext Pro'
     } else if (editModel === 'kieai_flux') {
@@ -217,6 +300,7 @@ export async function POST(request: NextRequest) {
             mime_type: 'image/jpeg',
             alt_text: altText || `Edited: ${instruction.slice(0, 100)}`,
             tags: [...tags, 'ai-edited',
+              editModel === 'recraft' ? 'recraft' :
               editModel === 'flux_kontext' ? 'flux-kontext' :
               editModel === 'kieai_flux' ? 'kieai-flux' :
               'nano-banana'],
